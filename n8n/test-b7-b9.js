@@ -47,6 +47,29 @@ console.log(`\nNormal run next morning (no pain log for hours) -> ${normal.map((
 const again = b7Run({ demo: false, now: later, alertsSent: normal.map((a) => ({ patientId: "P001", key: a.key })) });
 console.log(`Same run again (already sent) -> ${again.map((a) => a.key).join(", ") || "nothing (deduplicated)"}`);
 
+// ---------- B8 ----------
+const b8 = load("PainPal-B8-weekly-summary.json");
+const out8 = Object.fromEntries(TABLES.map((t) => [`Get ${t}`, wrap(db[t])]));
+out8["Get weather (Open-Meteo)"] = [{ json: {} }];
+out8["Get predictions"] = wrap([{ patientId: "P001", doseTime: db.doses[db.doses.length - 1].time, predictedHours: 2, actualHours: 2.5, error: 0.5 }]);
+out8.Settings = run(withEmail(codeOf(b8, "Settings")).replace("const PRESCRIBER_TO = 'prescriber@example.com';",
+  "const PRESCRIBER_TO = 'doc@example.org';"), out8, [{ json: {} }]);
+out8["Compute status"] = run(codeOf(b8, "Compute status"), out8, []);
+out8["Weekly stats"] = run(codeOf(b8, "Weekly stats"), out8, []);
+const w8 = out8["Weekly stats"][0].json;
+console.log(`\nB8 stats: ${JSON.stringify({ ...w8.stats, days: w8.stats.days.map((d) => `${d.day}:${d.avgPain}/${d.mg}mg`).join(" ") })}`);
+console.log(`B8 Claude request: model ${w8.claudeRequest.model}, effort ${w8.claudeRequest.output_config.effort}, ` +
+  `temperature sent: ${"temperature" in w8.claudeRequest}, chart URL ${w8.chartUrl.length} chars`);
+const fakeClaude = { model: "claude-opus-5-5", stop_reason: "end_turn",
+  content: [{ type: "thinking", thinking: "" }, { type: "text", text: "Hi Sam, this week went <well>.\n\nKeep it up." }] };
+const e1 = run(codeOf(b8, "Summary email"), out8, [{ json: fakeClaude }])[0].json;
+const e2 = run(codeOf(b8, "Summary email"), out8, [{ json: { error: { message: "no credential" } } }])[0].json;
+const e3 = run(codeOf(b8, "Summary email"), out8, [{ json: { stop_reason: "refusal", content: [] } }])[0].json;
+console.log(`B8 email with Claude -> writtenBy "${e1.writtenBy}", text escaped: ${e1.html.includes("&lt;well&gt;")}, to ${e1.sendTo}, prescriber ${e1.prescriberTo}`);
+console.log(`B8 email, Claude failed -> writtenBy "${e2.writtenBy}": ${e2.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 230)}…`);
+console.log(`B8 email, Claude refused -> writtenBy "${e3.writtenBy}"`);
+console.log(`B8 approval text: ${e1.approvalText}`);
+
 const err = run(withEmail(codeOf(b9, "Settings")), {}, [{ json: {
   workflow: { name: "PainPal · B4 · POST /log" },
   execution: { lastNodeExecuted: "Insert pain_log", url: "https://team17.app.n8n.cloud/execution/1", error: { message: "Table <x> not found" } },

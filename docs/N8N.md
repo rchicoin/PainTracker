@@ -104,13 +104,19 @@ Schedule (every 30 min) **or** Manual "Demo: send heads-ups now" → Settings �
 
 Every email ends with the 811 safety line and "Demo with synthetic data. Not medical advice." Tests: `node n8n/test-b7-b9.js`.
 
-## B8: Weekly summary (human in the loop)
-Schedule (weekly) + Manual Trigger for the demo →
-1. Read the week's data → Code: stats (avg pain, doses, % time above goal, relief vs interval, top factors)
-2. **AI Agent (Anthropic Claude)**: write a plain-language summary from the stats only (no invented numbers)
-3. **QuickChart**: pain chart image
-4. **Gmail: send and wait for approval** to the *patient*: "Share this summary with your prescriber?"
-5. Approved → Gmail to prescriber. Declined → log it.
+## B8: Weekly summary, human in the loop (`PainPal-B8-weekly-summary.json`)
+Import from URL, then: ✏️ `SEND_TO` + `PRESCRIBER_TO` in **Settings** · **Anthropic** credential in *Claude: write summary*
+(Credentials → Anthropic → API key) · Gmail credential in the 3 Gmail nodes · **Publish**. Demo: *Execute workflow* on **Demo: send summary now**.
+
+Monday 9 AM (or demo button) → Settings → Get tables → weather → Compute status → Get predictions →
+1. **Code: Weekly stats** (last 7 days): average pain vs goal, % logs above goal, as-needed doses and mg/day vs max, days at max,
+   walks, physio sessions, patterns, doses learned from, prediction error; **QuickChart** line chart of daily pain vs goal
+2. **HTTP Request → Claude Opus 5.5** (`claude-opus-5-5`, effort low, `anthropic-version: 2026-10-21`, server-side refusal
+   fallback on): writes a 120–180-word plain-language summary **from those numbers only**, no medical advice, never suggests dose changes
+3. **Code: Summary email**: Claude's text (HTML-escaped) + chart + stats table + safety footer. If Claude is unavailable or declines,
+   a template summary is used, so the workflow never breaks
+4. **Gmail** summary to the patient → **Gmail send-and-wait** "Share with your prescriber?" (Yes / No buttons)
+5. **IF** approved → Gmail to the prescriber · otherwise nothing is sent ("Kept private")
 
 ## B9: Error workflow (`PainPal-B9-error-alerts.json`)
 Error Trigger → Settings (✏️ email) → Gmail to the team: workflow name, failed node, error, link to the execution.

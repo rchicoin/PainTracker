@@ -1,0 +1,717 @@
+{
+  "name": "PainPal · B8 · Weekly summary",
+  "nodes": [
+    {
+      "id": "9114c111-e1a3-0160-d3e8-982bc83cbf13",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "name": "Every Monday 9 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "id": "488cc1db-daf8-4d27-f869-6eb617af44f1",
+      "parameters": {},
+      "name": "Demo: send summary now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        420
+      ]
+    },
+    {
+      "id": "fb9abd37-19ca-8bf5-624d-36b34fbc0280",
+      "parameters": {
+        "jsCode": "// ✏️ ONE-TIME SETUP: put the email address that should receive PainPal emails here.\n// (Edit it in n8n only. Don't commit a real address to GitHub.)\nconst SEND_TO = 'you@example.com';\nif (SEND_TO === 'you@example.com') throw new Error('Open the \"Settings\" node and set SEND_TO to your email address');\n// ✏️ Who gets the summary if the patient approves (for the demo this can be your own address too)\nconst PRESCRIBER_TO = 'prescriber@example.com';\nif (PRESCRIBER_TO === 'prescriber@example.com') throw new Error('Open the \"Settings\" node and set PRESCRIBER_TO');\nreturn [{ json: { patientId: 'P001', now: null, sendTo: SEND_TO, prescriberTo: PRESCRIBER_TO } }];"
+      },
+      "name": "Settings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "notes": "✏️ set both emails here once",
+      "notesInFlow": true,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "id": "be39bfab-7281-8ae6-c386-46d1a61c92a4",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "prescription"
+        },
+        "returnAll": true
+      },
+      "name": "Get prescription",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        440,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "3ce56437-533d-dd58-5a98-211ae43e0d4b",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "doses"
+        },
+        "returnAll": true
+      },
+      "name": "Get doses",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        660,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "a6fe3156-3f6c-ed87-632c-99b9827df882",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pain_log"
+        },
+        "returnAll": true
+      },
+      "name": "Get pain_log",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        880,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "e3a28681-085a-bc50-31b7-a4d00a769233",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "meals"
+        },
+        "returnAll": true
+      },
+      "name": "Get meals",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "6bf53661-b5dc-f20f-575c-3121059f52ed",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "walks"
+        },
+        "returnAll": true
+      },
+      "name": "Get walks",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "12e9f28d-5696-2739-9db2-32fe6a7ff13b",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "schedule"
+        },
+        "returnAll": true
+      },
+      "name": "Get schedule",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "7fed5ec8-5a3c-e887-7ec6-f60313f84f4b",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "patient_model"
+        },
+        "returnAll": true
+      },
+      "name": "Get patient_model",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "e50ef162-141e-2981-951c-e9a2fc44bdfe",
+      "parameters": {
+        "url": "https://api.open-meteo.com/v1/forecast",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "49.26"
+            },
+            {
+              "name": "longitude",
+              "value": "-123.25"
+            },
+            {
+              "name": "hourly",
+              "value": "pressure_msl,temperature_2m,precipitation"
+            },
+            {
+              "name": "past_days",
+              "value": "2"
+            },
+            {
+              "name": "forecast_days",
+              "value": "1"
+            },
+            {
+              "name": "timezone",
+              "value": "GMT"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Get weather (Open-Meteo)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "notes": "If weather fails, prediction still works (weather counts as average)",
+      "notesInFlow": true
+    },
+    {
+      "id": "6b9f3408-1472-c825-08cb-ab9a83d67f5d",
+      "parameters": {
+        "jsCode": "// Built by n8n/build.js from ml/predict.js + n8n/code/check-rules-and-predict.js. Edit those, then rebuild.\n// Model weights from ml/weights.json (synthetic, 30 fictional patients, 2036 doses).\nconst WEIGHTS = {\"model\":\"ridge\",\"target\":\"hours until pain rises above goal after an as-needed dose\",\"trainedOn\":\"synthetic, 30 fictional patients, 2036 doses\",\"features\":[\"hour_sin\",\"hour_cos\",\"evening\",\"pain_at_dose\",\"walk_km_prev_3h\",\"walk_min_prev_3h\",\"steps_prev_3h\",\"physio_next_2h\",\"hours_since_scheduled_med\",\"hours_since_meal\",\"pressure_change_6h\",\"temp_c\",\"precip_mm\"],\"mean\":[-0.059298,-0.513844,0.106582,5.969548,0.2039,3.222986,1016.464637,0.02947,5.450388,5.980417,-0.165894,8.042338,0.281434],\"scale\":[0.746339,0.41883,0.30858,1.440386,0.594858,9.482814,790.233074,0.169119,4.154466,4.366114,3.916826,1.78613,0.719473],\"coef\":[-0.058907,-0.058552,-0.248723,-0.470103,-0.195391,0.007972,-0.163123,-0.089004,-0.132273,-0.135733,0.288333,-0.036423,-0.089459],\"intercept\":2.817588,\"offsetUpdate\":{\"keep\":0.7,\"learn\":0.3},\"testErrorMin\":{\"patientMedian\":44,\"linear\":38,\"linearPlusOffset\":35}};\n\r\nconst TZ = \"America/Vancouver\";\r\nconst MIN_PER_KM = 16;          // average pace: estimates km for manual walks (km = null)\r\nconst HOUSEHOLD_STEPS_3H = 750; // steps in 3 h without a walk (no step counter in the app yet)\r\nconst STEPS_PER_KM = 1300;\r\n\r\nconst toDate = (t) => (t instanceof Date ? t : new Date(t));\r\nconst hoursBetween = (a, b) => (toDate(b) - toDate(a)) / 3600000;\r\nconst isNum = (x) => x !== null && x !== undefined && x !== \"\" && Number.isFinite(Number(x));\r\n\r\n/** Local hour of day (0-24, with minutes) in Vancouver. */\r\nfunction localHour(t) {\r\n  const parts = new Intl.DateTimeFormat(\"en-CA\", { timeZone: TZ, hour: \"numeric\", minute: \"numeric\", hourCycle: \"h23\" })\r\n    .formatToParts(toDate(t));\r\n  const get = (type) => Number(parts.find((p) => p.type === type).value);\r\n  return get(\"hour\") + get(\"minute\") / 60;\r\n}\r\n\r\n/** Hours since the latest event at or before `time`; null if none in the last 24 h (unknown). */\r\nfunction hoursSinceLast(times, time, cap = 12) {\r\n  const h = times.map((t) => hoursBetween(t, time)).filter((x) => x >= 0 && x <= 24);\r\n  return h.length ? Math.min(cap, Math.min(...h)) : null;\r\n}\r\n\r\n/** km for a walk: GPS distance, or estimated from minutes for manual walks (km = null). */\r\nfunction walkKm(w) {\r\n  return isNum(w.km) ? Number(w.km) : Number(w.minutes || 0) / MIN_PER_KM;\r\n}\r\n\r\n/**\r\n * doseTime:      time of the as-needed dose\r\n * painAtDose:    pain score at the dose (0-10), or null\r\n * walks:         [{ time, km|null, minutes }]  (time = walk start)\r\n * steps:         steps in the 3 h before the dose, or null (estimated from walks)\r\n * calendar:      [{ start, title }]            (from Google Calendar / schedule table)\r\n * scheduledMeds: [times]                       (scheduled medication taken)\r\n * meals:         [times]\r\n * weather:       { pressureNow, pressure6hAgo, tempC, precipMm } (any may be null)\r\n */\r\nfunction buildFeatures({ doseTime, painAtDose = null, walks = [], steps = null, calendar = [],\r\n  scheduledMeds = [], meals = [], weather = {} }) {\r\n  const hour = localHour(doseTime);\r\n  const recent = walks.filter((w) => {\r\n    const end = new Date(toDate(w.time).getTime() + Number(w.minutes || 0) * 60000);\r\n    const h = hoursBetween(end, doseTime);\r\n    return h >= 0 && h < 3; // walk finished in the 3 h before the dose\r\n  });\r\n  const km = recent.reduce((s, w) => s + walkKm(w), 0);\r\n  const physioSoon = calendar.some((e) => /physio/i.test(e.title || \"\") &&\r\n    hoursBetween(doseTime, e.start) >= 0 && hoursBetween(doseTime, e.start) < 2);\r\n  const w = weather || {};\r\n  return {\r\n    hour_sin: Math.sin((2 * Math.PI * hour) / 24),\r\n    hour_cos: Math.cos((2 * Math.PI * hour) / 24),\r\n    evening: hour >= 18 && hour < 22 ? 1 : 0,\r\n    pain_at_dose: isNum(painAtDose) ? Number(painAtDose) : null,\r\n    walk_km_prev_3h: km,\r\n    walk_min_prev_3h: recent.reduce((s, x) => s + Number(x.minutes || 0), 0),\r\n    steps_prev_3h: isNum(steps) ? Number(steps) : HOUSEHOLD_STEPS_3H + km * STEPS_PER_KM,\r\n    physio_next_2h: physioSoon ? 1 : 0,\r\n    hours_since_scheduled_med: hoursSinceLast(scheduledMeds, doseTime),\r\n    hours_since_meal: hoursSinceLast(meals, doseTime),\r\n    pressure_change_6h: isNum(w.pressureNow) && isNum(w.pressure6hAgo) ? w.pressureNow - w.pressure6hAgo : null,\r\n    temp_c: isNum(w.tempC) ? Number(w.tempC) : null,\r\n    precip_mm: isNum(w.precipMm) ? Number(w.precipMm) : null,\r\n  };\r\n}\r\n\r\n/** Global model only (no personal offset). Unknown features count as average (no effect). */\r\nfunction globalPrediction(weights, features) {\r\n  return weights.features.reduce((h, name, i) => {\r\n    const x = isNum(features[name]) ? Number(features[name]) : weights.mean[i];\r\n    return h + weights.coef[i] * ((x - weights.mean[i]) / weights.scale[i]);\r\n  }, weights.intercept);\r\n}\r\n\r\n/** Hours of relief for this patient = global model + their personal offset, kept in a sane range. */\r\nfunction predictHours(weights, features, offsetHours = 0) {\r\n  const offset = isNum(offsetHours) ? Number(offsetHours) : 0;\r\n  return Math.min(8, Math.max(0.5, globalPrediction(weights, features) + offset));\r\n}\r\n\r\n/** B5 learning: after a dose's real relief time is known, nudge the patient's offset. */\r\nfunction updateOffset(weights, offsetHours, actualHours, features) {\r\n  const { keep, learn } = weights.offsetUpdate || { keep: 0.7, learn: 0.3 };\r\n  const offset = isNum(offsetHours) ? Number(offsetHours) : 0;\r\n  return keep * offset + learn * (actualHours - globalPrediction(weights, features));\r\n}\r\n\n// B3 · Check rules & predict: the logic of the \"Compute status\" Code node.\r\n// n8n/build.js pastes this file (plus the helpers from ml/predict.js and ml/weights.json) into the node.\r\n// Test locally: node n8n/test-b3.js\r\n//\r\n// Returns everything GET /dashboard needs (docs/API.md) plus `status` (for the /log reply)\r\n// and `prediction` (for B5 learning / the predictions table).\r\n// Prescription limits are hard rules here. The model never changes them.\r\n\r\nfunction checkRulesAndPredict({ patientId, now, weights, prescription, doses, pain, meals, walks, schedule, patientModel, weatherApi }) {\r\n  const NOW = now ? new Date(now) : new Date();\r\n  const H = 3600000;\r\n  const mine = (rows) => (rows || []).filter((r) => r && String(r.patientId) === String(patientId));\r\n  const byTime = (field) => (a, b) => new Date(a[field]) - new Date(b[field]);\r\n  const upToNow = (field) => (r) => new Date(r[field]) <= NOW;\r\n\r\n  // ---------- inputs ----------\r\n  const rx = mine(prescription)[0];\r\n  if (!rx) throw new Error(`No prescription row for patient ${patientId}`);\r\n  const doseMg = Number(rx.doseMg), intervalH = Number(rx.minIntervalH), maxMg = Number(rx.maxMg24h), goal = Number(rx.goal);\r\n\r\n  const allDoses = mine(doses).filter(upToNow(\"time\")).sort(byTime(\"time\"));\r\n  const asNeeded = allDoses.filter((d) => !d.kind || d.kind === \"as-needed\");\r\n  const scheduledMeds = allDoses.filter((d) => d.kind === \"scheduled\").map((d) => d.time);\r\n  const painLog = mine(pain).filter(upToNow(\"time\")).sort(byTime(\"time\"));\r\n  const mealTimes = mine(meals).filter(upToNow(\"time\")).map((m) => m.time);\r\n  const walkRows = mine(walks).filter(upToNow(\"time\")).sort(byTime(\"time\"));\r\n  const calendar = mine(schedule).sort(byTime(\"start\"));\r\n  const model = mine(patientModel)[0] || { offsetHours: 0, dosesLearned: 0 };\r\n\r\n  // ---------- prescription rules ----------\r\n  const doseTimes = asNeeded.map((d) => new Date(d.time).getTime());\r\n  const mgIn24h = (t) => asNeeded.filter((d) => {\r\n    const x = new Date(d.time).getTime();\r\n    return x > t - 24 * H && x <= t;\r\n  }).reduce((s, d) => s + Number(d.mg || doseMg), 0);\r\n\r\n  const mgUsed24h = mgIn24h(NOW.getTime());\r\n  const lastDoseAt = doseTimes.length ? doseTimes[doseTimes.length - 1] : null;\r\n  // earliest time that respects BOTH the minimum interval and the 24 h maximum\r\n  let next = Math.max(NOW.getTime(), lastDoseAt === null ? 0 : lastDoseAt + intervalH * H);\r\n  for (let i = 0; i < 50 && mgIn24h(next) + doseMg > maxMg; i++) {\r\n    const inWindow = doseTimes.filter((x) => x > next - 24 * H && x <= next);\r\n    next = inWindow[0] + 24 * H;\r\n  }\r\n  const doseAllowedNow = next <= NOW.getTime();\r\n  const maxReached = mgUsed24h + doseMg > maxMg;\r\n\r\n  // ---------- prediction for the last as-needed dose ----------\r\n  let prediction = null;\r\n  if (lastDoseAt !== null) {\r\n    const doseTime = new Date(lastDoseAt);\r\n    const painBefore = painLog.filter((p) => {\r\n      const h = (doseTime - new Date(p.time)) / H;\r\n      return h >= 0 && h <= 1;\r\n    }).pop();\r\n    const features = buildFeatures({\r\n      doseTime,\r\n      painAtDose: painBefore ? painBefore.score : null,\r\n      walks: walkRows,\r\n      calendar,\r\n      scheduledMeds,\r\n      meals: mealTimes,\r\n      weather: weatherAt(weatherApi, doseTime),\r\n    });\r\n    const hours = predictHours(weights, features, model.offsetHours);\r\n    prediction = {\r\n      doseTime: localIso(doseTime),\r\n      predictedHours: round(hours, 2),\r\n      globalHours: round(globalPrediction(weights, features), 2),\r\n      offsetHours: round(Number(model.offsetHours) || 0, 3),\r\n      painLikelyBackAt: localIso(new Date(Math.round((lastDoseAt + hours * H) / 60000) * 60000)),\r\n      features,\r\n    };\r\n  }\r\n\r\n  // ---------- patterns (from the patient's own history) ----------\r\n  const reliefHistory = asNeeded.map((d, i) => {\r\n    const t = new Date(d.time).getTime();\r\n    const until = i + 1 < asNeeded.length ? new Date(asNeeded[i + 1].time).getTime() : NOW.getTime();\r\n    const back = painLog.find((p) => {\r\n      const x = new Date(p.time).getTime();\r\n      return x > t && x <= until && Number(p.score) > goal;\r\n    });\r\n    const h = back ? (new Date(back.time).getTime() - t) / H : null;\r\n    return h !== null && h <= 8 ? h : null;\r\n  }).filter((h) => h !== null);\r\n  const reliefHours = reliefHistory.length ? median(reliefHistory) : null;\r\n\r\n  const patterns = [];\r\n  if (reliefHours !== null) patterns.push(`Your relief usually lasts about ${round(reliefHours, 1)} hours.`);\r\n\r\n  const walkRises = walkRows.filter((w) => walkKm(w) > 1).map((w) => {\r\n    const start = new Date(w.time).getTime();\r\n    const end = start + Number(w.minutes || 0) * 60000;\r\n    const before = painLog.filter((p) => new Date(p.time).getTime() <= start).pop();\r\n    const after = painLog.filter((p) => { const x = new Date(p.time).getTime(); return x > end && x <= end + 2 * H; });\r\n    if (!before || !after.length) return null;\r\n    return Math.max(...after.map((p) => Number(p.score))) - Number(before.score);\r\n  }).filter((x) => x !== null);\r\n  const walkRise = walkRises.length >= 3 ? mean(walkRises) : 0;\r\n  if (walkRise >= 1) patterns.push(`Walks over 1 km raise your pain about ${Math.round(walkRise)} points within 2 hours.`);\r\n\r\n  const blocks = [[\"Mornings (6 AM–12 PM)\", 6, 12], [\"Afternoons (12–6 PM)\", 12, 18], [\"Evenings (6–10 PM)\", 18, 22]]\r\n    .map(([label, a, b]) => {\r\n      const s = painLog.filter((p) => { const h = localHour(p.time); return h >= a && h < b; }).map((p) => Number(p.score));\r\n      return { label, avg: s.length >= 5 ? mean(s) : null };\r\n    }).filter((x) => x.avg !== null).sort((x, y) => y.avg - x.avg);\r\n  if (blocks.length) patterns.push(`${blocks[0].label} are your hardest time.`);\r\n\r\n  const wet = painLog.filter((p) => Number(p.precipMm) > 0).map((p) => Number(p.score));\r\n  const dry = painLog.filter((p) => isNum(p.precipMm) && Number(p.precipMm) === 0).map((p) => Number(p.score));\r\n  if (wet.length >= 5 && dry.length >= 5 && mean(wet) - mean(dry) >= 0.5) {\r\n    patterns.push(`On rainy days your pain is about ${round(mean(wet) - mean(dry), 1)} points higher.`);\r\n  }\r\n\r\n  // ---------- heads-ups (never suggest anything outside the prescription) ----------\r\n  const nextDoseAt = new Date(next);\r\n  const headsUps = [];\r\n  const backAt = prediction ? new Date(prediction.painLikelyBackAt) : null;\r\n  if (maxReached) {\r\n    headsUps.push(`You've reached today's maximum (${maxMg} mg). Your next dose is allowed at ${clock(nextDoseAt)}.`);\r\n  }\r\n  if (backAt && backAt > NOW && backAt - NOW <= 90 * 60000) {\r\n    headsUps.push(`Pain likely back around ${clock(backAt)}. Your next dose is allowed ${doseAllowedNow ? \"now\" : \"at \" + clock(nextDoseAt)}.`);\r\n  }\r\n  const physio = calendar.find((e) => /physio/i.test(e.title || \"\") && new Date(e.start) > NOW && new Date(e.start) - NOW <= 3 * H);\r\n  if (physio) {\r\n    headsUps.push(`Physio at ${clock(new Date(physio.start))} (from your calendar). Pain may come back sooner afterwards. ` +\r\n      `Your next dose is allowed ${doseAllowedNow ? \"now\" : \"at \" + clock(nextDoseAt)}.`);\r\n  }\r\n\r\n  // ---------- output (docs/API.md) ----------\r\n  const last24h = (t) => NOW - new Date(t) <= 24 * H;\r\n  const painNow = painLog.length ? painLog[painLog.length - 1] : null;\r\n  const status = {\r\n    nextDoseAt: localIso(nextDoseAt),\r\n    doseAllowedNow,\r\n    mgUsed24h,\r\n    mgMax24h: maxMg,\r\n    painLikelyBackAt: prediction ? prediction.painLikelyBackAt : null,\r\n  };\r\n  return {\r\n    patientId,\r\n    patient: { name: rx.name, goal, drug: rx.drug, doseMg, minIntervalH: intervalH, maxMg24h: maxMg },\r\n    now: localIso(NOW),\r\n    painNow: painNow ? { score: Number(painNow.score), at: localIso(new Date(painNow.time)) } : null,\r\n    ...status,\r\n    maxReached,\r\n    reliefHours: prediction ? prediction.predictedHours : reliefHours !== null ? round(reliefHours, 1) : null,\r\n    chart: painLog.filter((p) => last24h(p.time)).map((p) => ({ time: localIso(new Date(p.time)), score: Number(p.score) })),\r\n    doses: asNeeded.filter((d) => last24h(d.time)).map((d) => localIso(new Date(d.time))),\r\n    walks: walkRows.filter((w) => last24h(w.time)).map((w) => ({\r\n      time: localIso(new Date(w.time)), km: isNum(w.km) ? Number(w.km) : null, minutes: Number(w.minutes) })),\r\n    patterns,\r\n    headsUps,\r\n    model: {\r\n      type: \"personalized ridge regression\",\r\n      personalOffsetMin: Math.round((Number(model.offsetHours) || 0) * 60),\r\n      dosesLearnedFrom: Number(model.dosesLearned) || 0,\r\n    },\r\n    status,\r\n    prediction,\r\n  };\r\n}\r\n\r\n// ---------- helpers ----------\r\nfunction weatherAt(api, time) {\r\n  const h = api && api.hourly;\r\n  if (!h || !h.time) return {};\r\n  const idx = (t) => h.time.findIndex((x) => Math.abs(new Date(x + \"Z\") - t) < 30 * 60000);\r\n  const i = idx(time.getTime()), j = idx(time.getTime() - 6 * 3600000);\r\n  if (i < 0) return {};\r\n  return {\r\n    pressureNow: h.pressure_msl[i],\r\n    pressure6hAgo: j >= 0 ? h.pressure_msl[j] : null,\r\n    tempC: h.temperature_2m[i],\r\n    precipMm: h.precipitation[i],\r\n  };\r\n}\r\nfunction localIso(d) {\r\n  const parts = Object.fromEntries(new Intl.DateTimeFormat(\"en-CA\", {\r\n    timeZone: TZ, year: \"numeric\", month: \"2-digit\", day: \"2-digit\", hour: \"2-digit\", minute: \"2-digit\",\r\n    second: \"2-digit\", hourCycle: \"h23\", timeZoneName: \"longOffset\",\r\n  }).formatToParts(d).map((p) => [p.type, p.value]));\r\n  const offset = parts.timeZoneName.replace(\"GMT\", \"\") || \"+00:00\";\r\n  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${offset}`;\r\n}\r\nfunction clock(d) {\r\n  return d.toLocaleTimeString(\"en-US\", { timeZone: TZ, hour: \"numeric\", minute: \"2-digit\" });\r\n}\r\nfunction median(a) { const s = [...a].sort((x, y) => x - y); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }\r\nfunction mean(a) { return a.reduce((s, x) => s + x, 0) / a.length; }\r\nfunction round(x, n) { const k = 10 ** n; return Math.round(x * k) / k; }\r\n\r\n\n// ---------- run ----------\nconst input = $('Settings').first().json;\nconst rows = (node) => $(node).all().map((i) => i.json).filter((r) => r && Object.keys(r).length > 0);\nlet weatherApi = null;\ntry { weatherApi = $('Get weather (Open-Meteo)').first().json; } catch (e) { weatherApi = null; }\n\nconst result = checkRulesAndPredict({\n  patientId: input.patientId || 'P001',\n  now: input.now || null,            // demo mode: pass a \"pretend now\" ISO time\n  weights: WEIGHTS,\n  prescription: rows('Get prescription'),\n  doses: rows('Get doses'),\n  pain: rows('Get pain_log'),\n  meals: rows('Get meals'),\n  walks: rows('Get walks'),\n  schedule: rows('Get schedule'),\n  patientModel: rows('Get patient_model'),\n  weatherApi,\n});\nreturn [{ json: result }];\n"
+      },
+      "name": "Compute status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        300
+      ],
+      "notes": "Prescription rules + Ridge prediction + personal offset + patterns",
+      "notesInFlow": true
+    },
+    {
+      "id": "7e1e59c0-b71a-fbe8-b8b4-9ef2c3ab91f7",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "predictions"
+        },
+        "returnAll": true
+      },
+      "name": "Get predictions",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "position": [
+        2420,
+        300
+      ]
+    },
+    {
+      "id": "e9f35fa1-d099-e16b-1a15-ada8882725a1",
+      "parameters": {
+        "jsCode": "// The week's numbers (last 7 days), a QuickChart chart, and the request for Claude.\n// Claude only rewrites these numbers in plain language; it never decides anything about doses.\nconst S = $('Settings').first().json;\nconst s = $('Compute status').first().json;\nconst TZ = 'America/Vancouver';\nconst H = 3600000, DAY = 24 * H;\nconst now = new Date(s.now);\nconst since = now.getTime() - 7 * DAY;\nconst mine = (node) => $(node).all().map((i) => i.json).filter((r) => r && String(r.patientId) === S.patientId);\nconst inWeek = (t) => { const x = new Date(t).getTime(); return x > since && x <= now.getTime(); };\nconst r1 = (x) => Math.round(x * 10) / 10;\nconst avg = (a) => (a.length ? a.reduce((p, x) => p + x, 0) / a.length : null);\nconst dayKey = (t) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(t));\nconst dayLabel = (t) => new Date(t).toLocaleDateString('en-US', { timeZone: TZ, weekday: 'short' });\n\nconst goal = s.patient.goal;\nconst pain = mine('Get pain_log').filter((p) => inWeek(p.time));\nconst doses = mine('Get doses').filter((d) => inWeek(d.time) && (!d.kind || d.kind === 'as-needed'));\nconst walks = mine('Get walks').filter((w) => inWeek(w.time));\nconst physio = mine('Get schedule').filter((e) => /physio/i.test(e.title || '') && inWeek(e.start));\nconst preds = mine('Get predictions').filter((p) => inWeek(p.doseTime) && p.actualHours !== null && p.actualHours !== undefined);\n\nconst days = [];\nfor (let i = 6; i >= 0; i--) {\n  const t = now.getTime() - i * DAY;\n  const scores = pain.filter((p) => dayKey(p.time) === dayKey(t)).map((p) => Number(p.score));\n  const mg = doses.filter((d) => dayKey(d.time) === dayKey(t)).reduce((p, d) => p + Number(d.mg || 0), 0);\n  days.push({ day: dayLabel(t), avgPain: scores.length ? r1(avg(scores)) : null, mg });\n}\n\nconst stats = {\n  patientFirstName: String(s.patient.name || '').split(' ')[0],\n  goal,\n  painLogs: pain.length,\n  averagePain: pain.length ? r1(avg(pain.map((p) => Number(p.score)))) : null,\n  percentLogsAboveGoal: pain.length ? Math.round((100 * pain.filter((p) => Number(p.score) > goal).length) / pain.length) : null,\n  asNeededDoses: doses.length,\n  averageMgPerDay: r1(doses.reduce((p, d) => p + Number(d.mg || 0), 0) / 7),\n  prescriptionMaxMgPerDay: s.patient.maxMg24h,\n  daysAtDailyMaximum: days.filter((d) => d.mg >= s.patient.maxMg24h).length,\n  walks: walks.length,\n  walkMinutes: walks.reduce((p, w) => p + Number(w.minutes || 0), 0),\n  physioSessions: physio.length,\n  patterns: s.patterns,\n  dosesLearnedFrom: s.model.dosesLearnedFrom,\n  personalOffsetMinutes: s.model.personalOffsetMin,\n  predictionErrorMinutesThisWeek: preds.length ? Math.round(avg(preds.map((p) => Math.abs(Number(p.error)))) * 60) : null,\n  days,\n};\n\nconst chart = {\n  type: 'line',\n  data: { labels: days.map((d) => d.day), datasets: [\n    { label: 'Average pain', data: days.map((d) => d.avgPain), borderColor: '#2563eb', fill: false, spanGaps: true },\n    { label: 'Your goal', data: days.map(() => goal), borderColor: '#16a34a', borderDash: [6, 4], fill: false, pointRadius: 0 },\n  ] },\n  options: { scales: { yAxes: [{ ticks: { min: 0, max: 10 } }] } },\n};\nconst chartUrl = 'https://quickchart.io/chart?w=600&h=300&c=' + encodeURIComponent(JSON.stringify(chart));\n\nconst claudeRequest = {\n  model: 'claude-opus-5-5',\n  max_tokens: 16000,\n  output_config: { effort: 'low' },\n  fallbacks: 'default',\n  system: 'You write a short weekly pain summary for a patient using the PainPal demo app. ' +\n    'Use ONLY the numbers and patterns in the JSON you are given; never invent numbers. ' +\n    'Plain, warm language at a grade 6 reading level, 120-180 words, no headings, no markdown, no lists. ' +\n    'Mention how the week went against their pain goal, how often they used their as-needed medication compared with the daily maximum, ' +\n    'activity (walks, physio), one or two of their patterns, and that PainPal keeps learning from their doses. ' +\n    'Never give medical advice and never suggest changing doses or the prescription; if something looks concerning, ' +\n    'suggest talking with their care team. Address the patient by first name.',\n  messages: [{ role: 'user', content: JSON.stringify(stats) }],\n};\nreturn [{ json: { ...S, stats, chartUrl, claudeRequest } }];"
+      },
+      "name": "Weekly stats",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "notes": "numbers + QuickChart + Claude request",
+      "notesInFlow": true,
+      "position": [
+        2640,
+        300
+      ]
+    },
+    {
+      "id": "9a0e69f6-cfbf-584f-efd8-d7ad32d71739",
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2026-10-21"
+            },
+            {
+              "name": "anthropic-beta",
+              "value": "server-side-fallback-2026-07-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.claudeRequest) }}",
+        "options": {}
+      },
+      "name": "Claude: write summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "notes": "Pick your Anthropic credential once · Claude Opus 5.5",
+      "notesInFlow": true,
+      "position": [
+        2860,
+        300
+      ]
+    },
+    {
+      "id": "234d79a8-3447-b881-928e-df424c7bff1e",
+      "parameters": {
+        "jsCode": "// Build the summary email. If Claude didn't answer (no credential, error, refusal), use a plain template instead.\nconst w = $('Weekly stats').first().json;\nconst st = w.stats;\nconst res = $input.first().json || {};\nlet text = null, writtenBy = 'template';\nif (res.stop_reason && res.stop_reason !== 'refusal' && Array.isArray(res.content)) {\n  const t = res.content.filter((b) => b.type === 'text').map((b) => b.text).join('\\n').trim();\n  if (t) { text = t; writtenBy = 'Claude (' + (res.model || 'claude-opus-5-5') + ')'; }\n}\nif (!text) {\n  text = 'Hi ' + st.patientFirstName + ', this week you logged your pain ' + st.painLogs + ' times. Your average was ' + st.averagePain +\n    '/10 (your goal is ' + st.goal + '/10), and ' + st.percentLogsAboveGoal + '% of logs were above your goal. You used your as-needed medication ' +\n    st.asNeededDoses + ' times (about ' + st.averageMgPerDay + ' mg a day; your maximum is ' + st.prescriptionMaxMgPerDay + ' mg). ' +\n    'You walked ' + st.walks + ' times and had ' + st.physioSessions + ' physio sessions. PainPal has learned from ' + st.dosesLearnedFrom +\n    ' of your doses. If anything worries you, talk with your care team.';\n}\nconst esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));\nconst row = (k, v) => '<tr><td style=\"padding:2px 12px 2px 0;color:#555\">' + k + '</td><td><b>' + esc(v) + '</b></td></tr>';\nconst html = '<h2 style=\"margin:0 0 8px\">Your PainPal week</h2>' +\n  esc(text).split(/\\n+/).map((p) => '<p>' + p + '</p>').join('') +\n  '<p><img src=\"' + w.chartUrl + '\" alt=\"Pain this week\" width=\"600\" style=\"max-width:100%\"></p>' +\n  '<table style=\"font-size:14px\">' + row('Average pain', st.averagePain + ' / 10 (goal ' + st.goal + ')') +\n  row('Logs above goal', st.percentLogsAboveGoal + '%') + row('As-needed doses', st.asNeededDoses + ' (avg ' + st.averageMgPerDay + ' mg/day, max ' + st.prescriptionMaxMgPerDay + ')') +\n  row('Walks', st.walks + ' (' + st.walkMinutes + ' min)') + row('Physio sessions', st.physioSessions) +\n  row('PainPal learned from', st.dosesLearnedFrom + ' doses') + '</table>' +\n  '<p style=\"color:#666;font-size:13px\">Summary written by ' + esc(writtenBy) + ' from your logged numbers only.<br>' +\n  \"Feeling very drowsy or confused? Don't take more. Call 811 or your care team.<br>Demo with synthetic data. Not medical advice.</p>\";\nreturn [{ json: { sendTo: w.sendTo, prescriberTo: w.prescriberTo, subject: 'Your PainPal week', html, writtenBy,\n  approvalText: 'Hi ' + st.patientFirstName + ', your weekly PainPal summary is in your inbox. Would you like to share it with your prescriber? ' +\n    'Nothing is sent unless you choose \"Yes, share it\".' } }];"
+      },
+      "name": "Summary email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "notes": "falls back to a template if Claude is unavailable",
+      "notesInFlow": true,
+      "position": [
+        3080,
+        300
+      ]
+    },
+    {
+      "id": "dc60ec98-756f-3715-acda-e30027781416",
+      "parameters": {
+        "sendTo": "={{ $json.sendTo }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "name": "Email summary to patient",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "webhookId": "126dc248-a7be-992d-42f4-e0d91831c068",
+      "notes": "Pick your Gmail credential once",
+      "notesInFlow": true,
+      "position": [
+        3300,
+        300
+      ]
+    },
+    {
+      "id": "334b5108-f1df-b2b3-5548-70ae5ade2c17",
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "={{ $('Summary email').first().json.sendTo }}",
+        "subject": "Share your PainPal summary with your prescriber?",
+        "message": "={{ $('Summary email').first().json.approvalText }}",
+        "responseType": "approval",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "approveLabel": "Yes, share it",
+            "disapproveLabel": "No, keep it private"
+          }
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "name": "Ask patient: share with prescriber?",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "webhookId": "450752f2-0a5f-2ea7-e1c8-86f3e8e9c3b0",
+      "notes": "Human in the loop: waits for the patient's answer",
+      "notesInFlow": true,
+      "position": [
+        3520,
+        300
+      ]
+    },
+    {
+      "id": "5db29d62-b731-c360-d8a4-4db68fa84fe2",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "patient-approved-",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Patient approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3740,
+        300
+      ]
+    },
+    {
+      "id": "2b7747ef-9f33-6d80-f607-4913badf6f83",
+      "parameters": {
+        "sendTo": "={{ $('Summary email').first().json.prescriberTo }}",
+        "subject": "=PainPal weekly summary (shared by your patient)",
+        "emailType": "html",
+        "message": "={{ $('Summary email').first().json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "name": "Send to prescriber",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "webhookId": "691fb122-6f8a-f0fa-d967-6fe03be6bb52",
+      "notes": "Pick your Gmail credential once",
+      "notesInFlow": true,
+      "position": [
+        3960,
+        200
+      ]
+    },
+    {
+      "id": "77ad19bb-bdc5-ec11-3ec4-53e77ec7f34c",
+      "parameters": {
+        "jsCode": "// The patient said no: nothing is sent.\nreturn [{ json: { shared: false, at: new Date().toISOString() } }];"
+      },
+      "name": "Kept private",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3960,
+        420
+      ]
+    },
+    {
+      "id": "058012b8-a2e9-0c6d-78ac-82a78fc8c8c3",
+      "parameters": {
+        "content": "## PainPal · B8 · Weekly summary (human in the loop)\nMonday 9 AM (or the demo button): week's stats → **Claude Opus 5.5** writes a plain-language summary from those numbers only → email + QuickChart chart to the patient → **the patient approves** before it goes to the prescriber.\n\n**Setup:** ✏️ emails in *Settings* · Anthropic credential in *Claude: write summary* · Gmail credential in the 3 Gmail nodes · Publish.\nNo Anthropic key? It still works with a template summary.\n\n**Owner:** Person B · built by n8n/build.js",
+        "width": 600,
+        "height": 300
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -340
+      ]
+    }
+  ],
+  "connections": {
+    "Every Monday 9 AM": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Demo: send summary now": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Get prescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get prescription": {
+      "main": [
+        [
+          {
+            "node": "Get doses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get doses": {
+      "main": [
+        [
+          {
+            "node": "Get pain_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get pain_log": {
+      "main": [
+        [
+          {
+            "node": "Get meals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get meals": {
+      "main": [
+        [
+          {
+            "node": "Get walks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get walks": {
+      "main": [
+        [
+          {
+            "node": "Get schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get schedule": {
+      "main": [
+        [
+          {
+            "node": "Get patient_model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get patient_model": {
+      "main": [
+        [
+          {
+            "node": "Get weather (Open-Meteo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get weather (Open-Meteo)": {
+      "main": [
+        [
+          {
+            "node": "Compute status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute status": {
+      "main": [
+        [
+          {
+            "node": "Get predictions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get predictions": {
+      "main": [
+        [
+          {
+            "node": "Weekly stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly stats": {
+      "main": [
+        [
+          {
+            "node": "Claude: write summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: write summary": {
+      "main": [
+        [
+          {
+            "node": "Summary email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary email": {
+      "main": [
+        [
+          {
+            "node": "Email summary to patient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email summary to patient": {
+      "main": [
+        [
+          {
+            "node": "Ask patient: share with prescriber?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask patient: share with prescriber?": {
+      "main": [
+        [
+          {
+            "node": "Patient approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Patient approved?": {
+      "main": [
+        [
+          {
+            "node": "Send to prescriber",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Kept private",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
