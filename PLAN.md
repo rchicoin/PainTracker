@@ -17,7 +17,10 @@ Fill in names: A = ________  B = ________
 
 ## How we work
 
+0. One-time setup on each laptop: `git config pull.rebase true` (so `git pull` puts your commits on top of your partner's).
 1. `git pull` before starting, `git push` after every working piece (small commits).
+   Push rejected? `git pull`, then `git push` again. **Never `git push --force`** (it deletes your partner's work).
+   Only push code that runs: `main` is what Vercel deploys.
 2. Don't edit the other person's area without telling them.
 3. The **API contract** (`docs/API.md`) is the agreement between app and n8n. Change it only together.
 4. Person A builds against **fake JSON** until Person B's webhooks are live, so nobody waits.
