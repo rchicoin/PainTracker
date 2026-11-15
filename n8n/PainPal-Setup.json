@@ -538,63 +538,6 @@
     },
     {
       "parameters": {
-        "resource": "table",
-        "operation": "delete",
-        "dataTableId": {
-          "__rl": true,
-          "mode": "name",
-          "value": "alerts"
-        }
-      },
-      "name": "Delete old alerts",
-      "type": "n8n-nodes-base.dataTable",
-      "typeVersion": 1,
-      "position": [
-        3740,
-        200
-      ],
-      "executeOnce": true,
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput",
-      "id": "setup-17-delete-old-alerts"
-    },
-    {
-      "parameters": {
-        "resource": "table",
-        "operation": "create",
-        "tableName": "alerts",
-        "columns": {
-          "column": [
-            {
-              "name": "patientId",
-              "type": "string"
-            },
-            {
-              "name": "key",
-              "type": "string"
-            },
-            {
-              "name": "sentAt",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {
-          "createIfNotExists": true
-        }
-      },
-      "name": "Create alerts",
-      "type": "n8n-nodes-base.dataTable",
-      "typeVersion": 1,
-      "position": [
-        3960,
-        400
-      ],
-      "executeOnce": true,
-      "id": "setup-18-create-alerts"
-    },
-    {
-      "parameters": {
         "url": "https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/seed/prescription.csv",
         "options": {
           "response": {
@@ -609,11 +552,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4180,
+        3740,
         200
       ],
       "executeOnce": true,
-      "id": "setup-19-download-prescription-csv"
+      "id": "setup-17-download-prescription-csv"
     },
     {
       "parameters": {
@@ -623,10 +566,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4400,
+        3960,
         400
       ],
-      "id": "setup-20-parse-prescription"
+      "id": "setup-18-parse-prescription"
     },
     {
       "parameters": {
@@ -649,10 +592,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        4620,
+        4180,
         300
       ],
-      "id": "setup-21-insert-prescription"
+      "id": "setup-19-insert-prescription"
     },
     {
       "parameters": {
@@ -670,11 +613,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4840,
+        4400,
         200
       ],
       "executeOnce": true,
-      "id": "setup-22-download-pain-log-csv"
+      "id": "setup-20-download-pain-log-csv"
     },
     {
       "parameters": {
@@ -684,10 +627,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5060,
+        4620,
         400
       ],
-      "id": "setup-23-parse-pain-log"
+      "id": "setup-21-parse-pain-log"
     },
     {
       "parameters": {
@@ -710,10 +653,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        5280,
+        4840,
         300
       ],
-      "id": "setup-24-insert-pain-log"
+      "id": "setup-22-insert-pain-log"
     },
     {
       "parameters": {
@@ -731,11 +674,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5500,
+        5060,
         200
       ],
       "executeOnce": true,
-      "id": "setup-25-download-doses-csv"
+      "id": "setup-23-download-doses-csv"
     },
     {
       "parameters": {
@@ -745,10 +688,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5720,
+        5280,
         400
       ],
-      "id": "setup-26-parse-doses"
+      "id": "setup-24-parse-doses"
     },
     {
       "parameters": {
@@ -771,10 +714,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        5940,
+        5500,
         300
       ],
-      "id": "setup-27-insert-doses"
+      "id": "setup-25-insert-doses"
     },
     {
       "parameters": {
@@ -792,11 +735,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        6160,
+        5720,
         200
       ],
       "executeOnce": true,
-      "id": "setup-28-download-meals-csv"
+      "id": "setup-26-download-meals-csv"
     },
     {
       "parameters": {
@@ -806,10 +749,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6380,
+        5940,
         400
       ],
-      "id": "setup-29-parse-meals"
+      "id": "setup-27-parse-meals"
     },
     {
       "parameters": {
@@ -832,10 +775,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        6600,
+        6160,
         300
       ],
-      "id": "setup-30-insert-meals"
+      "id": "setup-28-insert-meals"
     },
     {
       "parameters": {
@@ -853,11 +796,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        6820,
+        6380,
         200
       ],
       "executeOnce": true,
-      "id": "setup-31-download-walks-csv"
+      "id": "setup-29-download-walks-csv"
     },
     {
       "parameters": {
@@ -867,10 +810,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7040,
+        6600,
         400
       ],
-      "id": "setup-32-parse-walks"
+      "id": "setup-30-parse-walks"
     },
     {
       "parameters": {
@@ -893,10 +836,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        7260,
+        6820,
         300
       ],
-      "id": "setup-33-insert-walks"
+      "id": "setup-31-insert-walks"
     },
     {
       "parameters": {
@@ -914,11 +857,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        7480,
+        7040,
         200
       ],
       "executeOnce": true,
-      "id": "setup-34-download-schedule-csv"
+      "id": "setup-32-download-schedule-csv"
     },
     {
       "parameters": {
@@ -928,10 +871,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7700,
+        7260,
         400
       ],
-      "id": "setup-35-parse-schedule"
+      "id": "setup-33-parse-schedule"
     },
     {
       "parameters": {
@@ -954,10 +897,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        7920,
+        7480,
         300
       ],
-      "id": "setup-36-insert-schedule"
+      "id": "setup-34-insert-schedule"
     },
     {
       "parameters": {
@@ -975,11 +918,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        8140,
+        7700,
         200
       ],
       "executeOnce": true,
-      "id": "setup-37-download-patient-model-csv"
+      "id": "setup-35-download-patient-model-csv"
     },
     {
       "parameters": {
@@ -989,10 +932,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        8360,
+        7920,
         400
       ],
-      "id": "setup-38-parse-patient-model"
+      "id": "setup-36-parse-patient-model"
     },
     {
       "parameters": {
@@ -1015,10 +958,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        8580,
+        8140,
         300
       ],
-      "id": "setup-39-insert-patient-model"
+      "id": "setup-37-insert-patient-model"
     },
     {
       "parameters": {
@@ -1033,7 +976,7 @@
         0,
         -40
       ],
-      "id": "setup-40-sticky-note"
+      "id": "setup-38-sticky-note"
     }
   ],
   "connections": {
@@ -1214,28 +1157,6 @@
       ]
     },
     "Create predictions": {
-      "main": [
-        [
-          {
-            "node": "Delete old alerts",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Delete old alerts": {
-      "main": [
-        [
-          {
-            "node": "Create alerts",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create alerts": {
       "main": [
         [
           {

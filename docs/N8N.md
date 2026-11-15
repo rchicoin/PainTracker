@@ -28,10 +28,16 @@ Naming: `PainPal · B4 · /log`. Add a sticky note on each canvas: purpose · ow
 Sunday-morning refresh: `node data/generate.js` → `python ml/train.py` → `node n8n/build.js` → commit + push →
 wait ~5 min (GitHub caches raw files) → run Setup again → re-import B3 (new weights).
 
-## Google Calendar → `schedule` (physio heads-ups)
-Workflow `PainPal · Calendar sync`: Schedule Trigger (every 30 min) → **Google Calendar: Get many events** (next 7 days) →
-Code: map to `{ patientId: "P001", start, end, title }` → Data table **Upsert** into `schedule` (match on `start` + `title`).
-B3 reads `schedule`, so it works with the seeded events even before Calendar is connected.
+## B7: Google Calendar sync → `schedule` (physio feeds the prediction) (`PainPal-Calendar-sync.json`)
+Import from URL → open **Google Calendar: physio events** → Credential → Create new → Sign in with Google → **Save** → **Publish**.
+
+Every 30 min (or **Sync now**) → **Google Calendar: Get many events** (primary calendar, "physio", yesterday → next 7 days) →
+Get `schedule` → **Code: New physio events** (physio only, skips ones already saved; all-day events = 9 AM) → Insert `schedule`.
+
+B4 /log and B6 /dashboard read `schedule`: a physio appointment within 2 h after a dose shortens the predicted relief
+(feature `physio_next_2h`, about −30 min), and the dashboard shows "Physio at 2:00 PM (from your calendar)…".
+Works with the seeded events even before Calendar is connected. Test: `node n8n/test-calendar.js`.
+Demo: add "Physio" to Google Calendar ~1 h from now → **Sync now** → log a dose in the app → the prediction is earlier and the heads-up appears.
 
 ---
 
@@ -91,23 +97,9 @@ log a dose → later log pain above goal → the reply says what it learned → 
 ## B6: /dashboard
 Webhook GET `/dashboard?patientId=P001` (optional `&now=ISO` for demo mode) → Get tables → weather → **Compute status** → Respond with the dashboard JSON.
 
-## B7: Email updates (`PainPal-B7-email-updates.json`)
-Import from URL, then: ✏️ email in the **Settings** node · pick a Gmail credential in **Send email** · **Publish**.
-Demo: click *Execute workflow* on **Demo: send emails now**.
-
-Three triggers → Settings → Get tables → weather → **Compute status** (same as B3) → Get `predictions`, `alerts` →
-**Code: Decide emails** → **Gmail** (one email each) → Insert `alerts` (each email is sent once):
-- **Every 30 min:** heads-up when pain is likely back above goal within 30 min
-  ("Pain likely back around 3:10 PM. Your next dose is allowed at 2:45 PM."), or physio is on the calendar (`schedule`) within 3 h
-- **Every day 8 PM:** today's average pain vs goal, as-needed doses vs the daily max, walks, and what PainPal learned today
-- **Demo button:** sends the heads-up (as if 20 min before pain is back) and today's update right away
-
-Every email links to the app and ends with the 811 safety line and "Demo with synthetic data. Not medical advice."
-Tests: `node n8n/test-b7-b9.js`. Simplified from the original plan: no check-in form and no AI weekly summary (B8 dropped).
-
-## B9: Error workflow, optional (`PainPal-B9-error-alerts.json`)
-Error Trigger → Settings (✏️ email) → Gmail to the team: workflow name, failed node, error, link to the execution.
-Publish it, then in each PainPal workflow: **⋯ → Settings → Error workflow → PainPal · B9 · Error alerts** → Save.
+## Dropped to keep it simple
+No emails: heads-ups are shown in the app (`headsUps` from /dashboard). The weekly AI summary (B8) and error-alert
+emails (B9) were removed from the plan.
 
 ## Export
 The repo is the source: `node n8n/build.js` writes every workflow in `n8n/` from `ml/` + `n8n/code/`, and they are imported by URL.

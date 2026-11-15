@@ -1,0 +1,204 @@
+{
+  "name": "PainPal · Calendar sync (physio)",
+  "nodes": [
+    {
+      "id": "90ae3f3e-3de0-6330-d613-1ba73bcad16f",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "name": "Every 30 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "id": "68fa31dc-3c8d-6322-cf2c-6dd6fc163bfc",
+      "parameters": {},
+      "name": "Sync now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "id": "1b921b6e-6577-dcb9-596d-dc78b153d1cc",
+      "parameters": {
+        "resource": "event",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "mode": "list",
+          "value": "primary",
+          "cachedResultName": "Primary calendar"
+        },
+        "returnAll": true,
+        "timeMin": "={{ $now.minus({ days: 1 }) }}",
+        "timeMax": "={{ $now.plus({ week: 1 }) }}",
+        "options": {
+          "query": "physio",
+          "recurringEventHandling": "expand"
+        }
+      },
+      "name": "Google Calendar: physio events",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "alwaysOutputData": true,
+      "notes": "Pick your Google Calendar credential once",
+      "notesInFlow": true,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "id": "aa137060-277f-1ca8-1170-8df8e5551b47",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "schedule"
+        },
+        "returnAll": true
+      },
+      "name": "Get schedule",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "id": "3449267a-5f76-53da-2aff-ae7530e6e6b9",
+      "parameters": {
+        "jsCode": "// Google Calendar events -> rows for the \"schedule\" table. Only physio events, only ones not already saved.\n// The prediction uses \"physio within 2 h after a dose\" (shorter relief); the dashboard shows a physio heads-up.\nconst PATIENT = 'P001';\n// all-day events have only a date: treat them as 9 AM Vancouver time (n8n's server runs in UTC)\nconst VAN = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Vancouver', timeZoneName: 'longOffset' })\n  .formatToParts(new Date()).find((p) => p.type === 'timeZoneName').value.replace('GMT', '') || '+00:00';\nconst toIso = (t) => (t && (t.dateTime || (t.date ? t.date + 'T09:00:00' + VAN : null))) || null;\nconst saved = new Set($('Get schedule').all().map((i) => i.json)\n  .filter((r) => r && r.start).map((r) => new Date(r.start).getTime() + '|' + String(r.title || '').toLowerCase()));\nconst seen = new Set();\nconst rows = [];\nfor (const { json: e } of $('Google Calendar: physio events').all()) {\n  if (!e || e.error || !/physio/i.test(e.summary || '')) continue;\n  const start = toIso(e.start), end = toIso(e.end) || start;\n  if (!start) continue;\n  const key = new Date(start).getTime() + '|' + String(e.summary).toLowerCase();\n  if (saved.has(key) || seen.has(key)) continue;\n  seen.add(key);\n  rows.push({ json: { patientId: PATIENT, start, end, title: String(e.summary).slice(0, 80) } });\n}\nreturn rows; // nothing new -> the workflow stops here"
+      },
+      "name": "New physio events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "notes": "only physio, only new ones",
+      "notesInFlow": true,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "id": "bdac07e9-6b07-43e8-14dd-bc08e31213b2",
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "schedule"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert schedule",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "id": "2a714606-4cb8-61ff-0f60-ffaa608f462d",
+      "parameters": {
+        "content": "## PainPal · Calendar sync (physio)\nEvery 30 min (or **Sync now**): reads Google Calendar events with \"physio\" in the title (yesterday → next 7 days) and adds new ones to the **schedule** table.\n\nB4 /log and B6 /dashboard use it: a physio appointment within 2 h after a dose shortens the predicted relief, and the dashboard shows a physio heads-up.\n\n**Setup:** Google Calendar credential in the calendar node · Publish.\n**Owner:** Person B · built by n8n/build.js",
+        "width": 560,
+        "height": 260
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    }
+  ],
+  "connections": {
+    "Every 30 min": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar: physio events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync now": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar: physio events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar: physio events": {
+      "main": [
+        [
+          {
+            "node": "Get schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get schedule": {
+      "main": [
+        [
+          {
+            "node": "New physio events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New physio events": {
+      "main": [
+        [
+          {
+            "node": "Insert schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

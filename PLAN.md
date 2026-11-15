@@ -51,9 +51,9 @@ Fill in names: A = ________  B = Reagan
 - [x] **B4** Workflow **/log**
 - [x] **B5** Personal learning: update patient offset after each completed dose
 - [x] **B6** Workflow **/dashboard**
-- [ ] **B7** Workflow **Email updates** (heads-ups every 30 min + daily update at 8 PM)
-- ~~**B8** Weekly summary~~ (dropped to keep it simple: B7's daily email covers it)
-- [ ] **B9** (optional) Error workflow; workflows are exported to `n8n/` by `node n8n/build.js`
+- [ ] **B7** Workflow **Google Calendar sync**: physio appointments → `schedule` table → used by the prediction
+- ~~**B8** Weekly summary~~ (dropped to keep it simple)
+- [x] **B9** Workflows exported to `n8n/` (built by `node n8n/build.js`); error-alert emails dropped
 
 ### Both: Submission
 - [ ] Regenerate demo data so "last 24 h" looks live (Sunday morning)
