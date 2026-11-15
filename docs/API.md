@@ -17,15 +17,17 @@ Each n8n Webhook node must allow the app's origin under **Options → Allowed Or
 Request body is one of:
 
 ```json
-{ "patientId": "P001", "type": "pain",  "score": 6, "location": "right knee", "note": "after stairs" }
+{ "patientId": "P001", "type": "pain",  "score": 6, "note": "after stairs" }
 { "patientId": "P001", "type": "dose" }
 { "patientId": "P001", "type": "meal",  "meal": "lunch" }
 { "patientId": "P001", "type": "walk",  "km": 1.2, "minutes": 18, "source": "auto" }
+{ "patientId": "P001", "type": "walk",  "km": null, "minutes": 25, "source": "manual" }
 ```
 
-- `score`: integer 0–10. `location` and `note`: optional.
+- `score`: integer 0–10. `note`: optional. (No body location: the app doesn't collect it.)
 - `dose`: n8n uses the dose from the prescription.
-- `walk.source`: `"auto"` (GPS while app open) or `"manual"`.
+- `walk.source`: `"auto"` (GPS while app open) or `"manual"`. Manual walks have no GPS distance, so `km` is `null`
+  (n8n estimates km from minutes for the prediction; it stores `km` as empty).
 - **Never send coordinates.**
 
 Response:
@@ -76,7 +78,7 @@ Response (Person A: use this as the **fake data** until n8n is live):
     { "time": "2026-11-15T10:45:00-08:00", "score": 6 }
   ],
   "doses": ["2026-11-14T13:00:00-08:00", "2026-11-14T20:00:00-08:00", "2026-11-15T08:00:00-08:00"],
-  "walks": [{ "time": "2026-11-14T16:30:00-08:00", "km": 1.3 }],
+  "walks": [{ "time": "2026-11-14T16:30:00-08:00", "km": 1.3, "minutes": 20 }, { "time": "2026-11-15T09:10:00-08:00", "km": null, "minutes": 25 }],
   "patterns": [
     "Your relief usually lasts about 3 hours.",
     "Walks over 1 km raise your pain about 2 points within 2 hours.",

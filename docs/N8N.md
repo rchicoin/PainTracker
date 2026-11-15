@@ -9,27 +9,47 @@ Naming: `PainPal · B4 · /log`. Add a sticky note on each canvas: purpose · ow
 | Table | Columns |
 |---|---|
 | `prescription` | patientId, name, goal, drug, doseMg, minIntervalH, maxMg24h, email |
-| `pain_log` | patientId, time, score, location, note, pressureHpa, tempC, precipMm |
-| `doses` | patientId, time, mg |
+| `pain_log` | patientId, time, score, note, pressureHpa, tempC, precipMm (no location: the app doesn't send it) |
+| `doses` | patientId, time, mg, drug, kind (`as-needed` = DemoRelief, counts toward limits; `scheduled` = Baselinol) |
 | `meals` | patientId, time, meal |
-| `walks` | patientId, time, km, minutes, source |
+| `walks` | patientId, time, km (**empty for manual walks**), minutes, source (`auto`/`manual`) |
+| `schedule` | patientId, start, end, title (calendar events, e.g. "Physio session"; synced from Google Calendar) |
 | `patient_model` | patientId, offsetHours, dosesLearned, lastUpdated |
 | `predictions` | patientId, doseTime, predictedHours, actualHours (filled later), error |
 
-Load demo history for one patient from `data/` (prescription.csv, pain_log.csv, medications.csv, meals.csv, walks.csv). See `data/README.md`.
+## B1: Load the demo patient
+Files are made by `node n8n/build.js` (after `node data/generate.js` and `python ml/train.py`), for P001 only.
+
+1. n8n → your project → **Data tables** → split button (top right) → **Create Data table** → **Import CSV**.
+2. Import each file from `n8n/seed/`, naming the table exactly like the file:
+   `prescription`, `pain_log`, `doses`, `meals`, `walks`, `schedule`, `patient_model`.
+   Check the column types n8n guesses: `score`, `mg`, `km`, `minutes`, `goal`, `doseMg`, `minIntervalH`, `maxMg24h`, `offsetHours`, `dosesLearned`, weather columns = **number**; everything else = **string** (times are ISO strings).
+3. Create `predictions` **from scratch** with the columns above (it starts empty).
+4. Sunday-morning refresh: re-run the three commands, delete the rows in each table, import again.
+
+## Google Calendar → `schedule` (physio heads-ups)
+Workflow `PainPal · Calendar sync`: Schedule Trigger (every 30 min) → **Google Calendar: Get many events** (next 7 days) →
+Code: map to `{ patientId: "P001", start, end, title }` → Data table **Upsert** into `schedule` (match on `start` + `title`).
+B3 reads `schedule`, so it works with the seeded events even before Calendar is connected.
 
 ---
 
-## Sub-workflow: Check rules & predict
-**Trigger:** Execute Workflow Trigger (input: `patientId`)
+## B3: Sub-workflow · Check rules & predict
+**Built from the repo:** `n8n/PainPal-B3-check-rules-and-predict.json` (run `node n8n/build.js` to rebuild, `node n8n/test-b3.js` to test locally).
+Import: Workflows → **Import from file**. Then open each **Get …** node and pick its data table. Save.
 
-1. Read `prescription`, `doses` (last 48 h), `pain_log` (last 7 days), `walks`, `meals`, `patient_model`
-2. **Code: compute status**: last dose, mg in last 24 h, next allowed time = max(last dose + interval, time when 24 h total allows another dose)
-3. **IF** dose allowed now? / **IF** 24 h max reached?
-4. HTTP Request: GET `ml/weights.json` from GitHub (raw URL), or paste weights into the Code node
-5. **Code: predict**: features at last dose → Ridge prediction + `patient_model.offsetHours` → `painLikelyBackAt`
-6. **Code: patterns**: median relief, average pain rise after walks > 1 km, worst time of day
-7. Return everything the dashboard needs (`docs/API.md`)
+**Trigger:** When called by another workflow (input: `patientId`, optional `now` for demo mode). Pinned test data: `{ "patientId": "P001" }`.
+
+1. **Get** `prescription`, `doses`, `pain_log`, `meals`, `walks`, `schedule`, `patient_model` (Data table nodes, execute once)
+2. **HTTP Request** Open-Meteo hourly pressure / temperature / rain (last 2 days). If it fails, weather counts as average.
+3. **Code: Compute status** (weights from `ml/weights.json` are baked in):
+   - rules: mg in last 24 h, next allowed time = max(last dose + interval, time when 24 h total allows another dose)
+   - predict: features at the last as-needed dose → Ridge + `patient_model.offsetHours` → `painLikelyBackAt`.
+     Missing inputs (manual walk `km` empty, no weather, no step counter) count as average, so nothing breaks.
+   - patterns: median relief, pain rise after walks > 1 km, hardest time of day, rainy vs dry days
+   - heads-ups: pain likely back soon, 24 h max reached, physio on the calendar in the next 3 h
+4. **IF** 24 h max reached? → **IF** dose allowed now? → **Set** `rule` text (visible rules on the canvas)
+5. Output = the `/dashboard` JSON (`docs/API.md`) plus `status` (for the /log reply) and `prediction` (for B5)
 
 ## B4: /log
 **Trigger:** Webhook POST `/log` (Respond: using Respond to Webhook; CORS set)

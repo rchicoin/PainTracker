@@ -1,8 +1,10 @@
 // Synthetic dataset generator for PainPal.
 // FICTIONAL patients and FICTIONAL drugs ("Baselinol", "DemoRelief"). Not real data, not medical advice.
 //
-// Inputs we simulate are only what the app can collect:
-//   GPS walks (distance + minutes, never coordinates), pain logs, medication times, meal times, weather.
+// Inputs we simulate are only what the app / n8n can collect:
+//   walks (GPS km + minutes, never coordinates; manual walks have minutes only), step counts,
+//   pain logs, medication times, meal times, weather, and calendar events (physio, planned walks)
+//   that n8n reads from Google Calendar.
 //
 // Usage:
 //   node data/generate.js                              # history ends now
@@ -35,8 +37,10 @@ function trueReliefHours(f, personalOffset, rand) {
   let h = 3.9;
   h -= 0.6 * f.evening;                    // evenings are harder
   h -= 0.15 * (f.pain_at_dose - 5);        // higher pain at dose -> shorter relief
-  h -= 0.4 * f.walk_km_prev_3h;            // walking before the dose (GPS distance)
-  h -= 0.006 * f.walk_min_prev_3h;         // ...and time spent walking (GPS duration)
+  h -= 0.4 * f.trueKm;                     // walking before the dose (real distance)
+  h -= 0.006 * f.walk_min_prev_3h;         // ...and time spent walking
+  h -= 0.00015 * f.steps_prev_3h;          // general movement (steps)
+  h -= 0.8 * f.physio_next_2h;             // physio on the calendar soon after the dose
   h -= 0.05 * f.hours_since_scheduled_med; // late / missed Baselinol
   h -= 0.04 * f.hours_since_meal;          // skipped meals
   h += 0.08 * f.pressure_change_6h;        // falling pressure (negative) -> shorter relief
@@ -52,7 +56,7 @@ const FIRST = ["Sam", "Alex", "Jordan", "Riley", "Casey", "Morgan", "Taylor", "J
   "Rowan", "Skyler", "Drew", "Parker", "Reese", "Emerson", "Hayden", "Kai", "Logan", "Sage",
   "Charlie", "Dakota", "Finley", "Harper", "Jesse", "Kendall", "Lee", "Marlowe", "Noel", "Robin"];
 const LAST = ["Demo", "Sample", "Example", "Testwell", "Mockford", "Placeholder", "Fictional", "Synth"];
-const SITES = ["right knee", "left knee", "right hip", "left hip", "lower back", "right shoulder", "neck"];
+const MIN_PER_KM = 16; // average walking pace, used to estimate km for manual walks (minutes only)
 
 function makePatients(rand) {
   const patients = [];
@@ -69,10 +73,11 @@ function makePatients(rand) {
       minIntervalH: i === 0 ? 4 : interval,
       maxMg24h: i === 0 ? 20 : doseMg * (interval === 3 ? 5 : 4),
       email: `${id.toLowerCase()}@example.com`,
-      location: i === 0 ? "right knee" : rand.pick(SITES),
       offset: i === 0 ? -0.4 : rand.normal(0, 0.6), // hidden personal effect (hours)
       riseRate: rand.uniform(0.8, 1.4),             // pain points per hour once relief wears off
       walker: rand.uniform(0.3, 1.0),               // how often they walk
+      physioDays: rand.pick([[0, 2, 4], [1, 3], [0, 3, 5], [1, 4]]), // day index % 7
+      physioHour: rand.pick([10, 14, 15]),
     });
   }
   return patients;
@@ -95,11 +100,11 @@ function makeWeather(rand) {
 
 // ---------- one patient's history ----------
 function simulatePatient(p, weather, rand) {
-  const meds = [], meals = [], walks = [], pain = [], training = [];
+  const meds = [], meals = [], walks = [], pain = [], training = [], calendar = [];
   const doses = []; // as-needed doses, minutes
   const days = [];
 
-  // 1) daily routine: wake/bed, scheduled Baselinol, meals, GPS walks
+  // 1) daily routine: wake/bed, scheduled Baselinol, meals, walks, calendar (physio + planned walks)
   for (let d = 0; d < DAYS; d++) {
     const day = d * 1440;
     days.push({ wake: day + 7 * 60 + rand.int(0, 60), bed: day + 22 * 60 + rand.int(0, 60) });
@@ -117,10 +122,20 @@ function simulatePatient(p, weather, rand) {
     const nWalks = rand.next() < p.walker ? (rand.next() < 0.35 ? 2 : 1) : 0;
     for (let w = 0; w < nWalks; w++) {
       const km = round(rand.uniform(0.3, 2.5), 2);
-      walks.push({ t: day + rand.int(9 * 60 + 30, 19 * 60 + 30), km,
-        minutes: Math.round(km * rand.uniform(12, 20)), source: rand.pick(["auto", "auto", "manual"]) });
+      const t = day + rand.int(9 * 60 + 30, 19 * 60 + 30);
+      const minutes = Math.round(km * rand.uniform(12, 20));
+      const source = rand.pick(["auto", "auto", "manual"]);
+      // manual walks have no GPS distance: the app sends km = null
+      walks.push({ t, trueKm: km, km: source === "auto" ? km : null, minutes, source });
+      if (rand.next() < 0.4) calendar.push({ t, end: t + minutes, title: "Walk" });
+    }
+    if (p.physioDays.includes(d % 7)) {
+      const t = day + p.physioHour * 60;
+      calendar.push({ t, end: t + 45, title: "Physio session" });
     }
   }
+  calendar.sort((a, b) => a.t - b.t);
+  const kmOf = (w) => (w.km ?? w.minutes / MIN_PER_KM); // same estimate n8n uses
   walks.sort((a, b) => a.t - b.t);
   meds.sort((a, b) => a.t - b.t);
   meals.sort((a, b) => a.t - b.t);
@@ -168,15 +183,18 @@ function simulatePatient(p, weather, rand) {
         hour_cos: round(Math.cos((2 * Math.PI * hour) / 24), 4),
         evening: hour >= 18 && hour < 22 ? 1 : 0,
         pain_at_dose: painAtDose,
-        walk_km_prev_3h: round(recent.reduce((s, w) => s + w.km, 0), 2),
+        walk_km_prev_3h: round(recent.reduce((s, w) => s + kmOf(w), 0), 2),
         walk_min_prev_3h: recent.reduce((s, w) => s + w.minutes, 0),
+        // the app has no step counter yet, so steps = household baseline + walking (n8n estimates the same way)
+        steps_prev_3h: Math.round(rand.uniform(150, 350) * 3 + recent.reduce((s, w) => s + w.trueKm * 1300, 0)),
+        physio_next_2h: calendar.some((e) => /physio/i.test(e.title) && e.t >= t && e.t < t + 120) ? 1 : 0,
         hours_since_scheduled_med: round(hoursSince(meds, t, 12), 2),
         hours_since_meal: round(hoursSince(meals, t, 12), 2),
         pressure_change_6h: round(weather.pressureAt(t / 60) - weather.pressureAt(t / 60 - 6), 2),
         temp_c: wx.tempC,
         precip_mm: wx.precipMm,
       };
-      const relief = trueReliefHours(f, p.offset, rand);
+      const relief = trueReliefHours({ ...f, trueKm: recent.reduce((s, w) => s + w.trueKm, 0) }, p.offset, rand);
       const ret = t + Math.round(relief * 60);
 
       doses.push(t);
@@ -201,7 +219,7 @@ function simulatePatient(p, weather, rand) {
   for (const w of walks) {
     const t = w.t + w.minutes + rand.int(45, 90);
     const inRelief = reliefWindows.some(([a, b]) => t >= a && t < b);
-    const bump = Math.round(0.9 * w.km);
+    const bump = Math.round(0.9 * w.trueKm);
     if (bump < 1 || inRelief) continue; // during relief pain stays at/below goal by definition
     logPain(t, Math.min(9, p.goal + 1 + bump), "after walk");
   }
@@ -211,7 +229,7 @@ function simulatePatient(p, weather, rand) {
   const done = (list) => list.filter((e) => e.t <= NOW_MIN);
   const id = p.patientId;
   return {
-    pain: pain.map((e) => ({ patientId: id, time: iso(e.t), score: e.score, location: p.location, note: e.note,
+    pain: pain.map((e) => ({ patientId: id, time: iso(e.t), score: e.score, note: e.note,
       ...pick(weather.at(e.t), ["pressureHpa", "tempC", "precipMm"]) })),
     meds: [
       ...done(meds).map((e) => ({ patientId: id, time: iso(e.t), drug: e.drug, mg: e.mg, kind: e.kind })),
@@ -220,6 +238,8 @@ function simulatePatient(p, weather, rand) {
     meals: done(meals).map((e) => ({ patientId: id, time: iso(e.t), meal: e.meal })),
     walks: walks.filter((w) => w.t + w.minutes <= NOW_MIN)
       .map((e) => ({ patientId: id, time: iso(e.t), km: e.km, minutes: e.minutes, source: e.source })),
+    // calendar runs into the future too (it's a plan), like Google Calendar would
+    schedule: calendar.map((e) => ({ patientId: id, start: iso(e.t), end: iso(e.end), title: e.title })),
     training,
   };
 }
@@ -228,7 +248,7 @@ function simulatePatient(p, weather, rand) {
 const rand = makeRand(SEED);
 const patients = makePatients(rand);
 const weather = makeWeather(rand);
-const all = { pain: [], meds: [], meals: [], walks: [], training: [] };
+const all = { pain: [], meds: [], meals: [], walks: [], schedule: [], training: [] };
 for (const p of patients) {
   const r = simulatePatient(p, weather, makeRand(SEED * 1000 + Number(p.patientId.slice(1))));
   for (const k of Object.keys(all)) all[k].push(...r[k]);
@@ -239,6 +259,7 @@ writeCsv("pain_log.csv", all.pain);
 writeCsv("medications.csv", all.meds);
 writeCsv("meals.csv", all.meals);
 writeCsv("walks.csv", all.walks);
+writeCsv("schedule.csv", all.schedule);
 writeCsv("weather.csv", weather.rows.filter((w) => w.time <= iso(NOW_MIN)));
 writeCsv("training_doses.csv", all.training);
 

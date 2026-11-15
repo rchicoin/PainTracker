@@ -16,15 +16,18 @@ It never changes prescription limits. Those are fixed rules in n8n.
 Not deep learning. The language model (Claude) is only used for understanding text and writing summaries, **not** for predictions.
 
 ## Features (known at the time of the dose)
-Only what the app collects: GPS walks, pain logs, medication times, meal times, weather. Not specific to surgery patients.
+Only what the app and n8n collect: walks, steps, pain logs, medication times, meal times, weather, calendar. Not specific to surgery patients.
+Unknown values (manual walk with no km, no weather, no step counter) are filled with the training average, so they don't move the prediction.
 
 | Feature | Source | Meaning |
 |---|---|---|
 | hour_sin, hour_cos | dose time | time of day as a circle |
 | evening | dose time | 1 if 6–10 PM |
 | pain_at_dose | pain log | pain score when the dose was taken |
-| walk_km_prev_3h | GPS walks | km walked in the 3 h before the dose |
-| walk_min_prev_3h | GPS walks | minutes walked in the 3 h before the dose |
+| walk_km_prev_3h | walks | km walked in the 3 h before the dose (manual walks: minutes ÷ 16) |
+| walk_min_prev_3h | walks | minutes walked in the 3 h before the dose |
+| steps_prev_3h | steps | steps in the 3 h before the dose (no step counter in the app yet: 750 + 1300 × km) |
+| physio_next_2h | Google Calendar | 1 if a physio event starts within 2 h after the dose |
 | hours_since_scheduled_med | medications | late/missed scheduled medication (capped at 12) |
 | hours_since_meal | meals | skipped meals (capped at 12) |
 | pressure_change_6h | weather | change in air pressure over 6 h (falling = negative) |
@@ -39,10 +42,10 @@ Filled in by `ml/train.py` (it prints this table).
 | Model | Average error |
 |---|---|
 | Patient's own median (simple baseline) | 44 min |
-| Linear, same for everyone | 40 min |
-| **Linear + personal offset (our model)** | **34 min** |
+| Linear, same for everyone | 38 min |
+| **Linear + personal offset (our model)** | **35 min** |
 
-Biggest effects found: evenings (about −60 min of relief), each km walked in the previous 3 h (about −45 min), rain (about −9 min per mm).
+Biggest effects found: evenings (about −48 min of relief), physio within 2 h (about −32 min), each km walked in the previous 3 h (about −20 min), each pain point at the dose (about −20 min), rain (about −8 min per mm).
 
 ## weights.json format
 ```json

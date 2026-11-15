@@ -1,0 +1,2 @@
+patientId,name,goal,drug,doseMg,minIntervalH,maxMg24h,email
+P001,Sam Demo,3,DemoRelief (fictional),5,4,20,p001@example.com

@@ -21,7 +21,7 @@ from sklearn.preprocessing import StandardScaler
 ROOT = Path(__file__).resolve().parent.parent
 FEATURES = [
     "hour_sin", "hour_cos", "evening", "pain_at_dose",
-    "walk_km_prev_3h", "walk_min_prev_3h",
+    "walk_km_prev_3h", "walk_min_prev_3h", "steps_prev_3h", "physio_next_2h",
     "hours_since_scheduled_med", "hours_since_meal",
     "pressure_change_6h", "temp_c", "precip_mm",
 ]
