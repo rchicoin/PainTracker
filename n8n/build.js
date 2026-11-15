@@ -563,6 +563,65 @@ return [{ json: { patientId: q.patientId || 'P001', now: q.now || localIso(new D
   console.log(`B4/B6:    n8n/PainPal-B4-log.json (${b4.length} nodes), n8n/PainPal-B6-dashboard.json (${b6.length} nodes)`);
 }
 
+// ---------- R4: POST /prescription (the patient's one as-needed medication) ----------
+{
+  const RX_CHECK = `// Validate the prescription (docs/API.md, R4). Bad values get a 400 with a clear message.
+// These become hard rules for every dose check, so nothing is guessed or rounded silently.
+const b = $input.first().json.body || {};
+const num = (x) => (x === null || x === undefined || x === '' ? NaN : Number(x));
+const drug = String(b.drug ?? '').trim();
+const doseMg = num(b.doseMg), minIntervalH = num(b.minIntervalH), maxMg24h = num(b.maxMg24h), goal = num(b.goal);
+let error = null;
+if (drug.length < 1 || drug.length > 40) error = 'Medication name must be 1 to 40 characters';
+else if (!(doseMg > 0 && doseMg <= 1000)) error = 'Dose must be more than 0 mg (up to 1000 mg)';
+else if (!(minIntervalH >= 1 && minIntervalH <= 24)) error = 'Hours between doses must be from 1 to 24';
+else if (!(maxMg24h >= doseMg && maxMg24h <= 10000)) error = 'Daily maximum must be at least one dose (' + doseMg + ' mg)';
+else if (!(Number.isInteger(goal) && goal >= 0 && goal <= 10)) error = 'Pain goal must be a whole number from 0 to 10';
+return [{ json: { valid: !error, error, patientId: String(b.patientId || 'P001'), drug, doseMg, minIntervalH, maxMg24h, goal } }];`;
+  const RX_ROW = `// Only the fields the patient can change; name stays as it is
+const c = $('Check request').first().json;
+const old = $input.all().map((i) => i.json).find((r) => r && String(r.patientId) === c.patientId);
+if (!old) throw new Error('No prescription row for patient ' + c.patientId);
+return [{ json: { patientId: c.patientId, drug: c.drug, doseMg: c.doseMg, minIntervalH: c.minIntervalH, maxMg24h: c.maxMg24h, goal: c.goal } }];`;
+  const RX_REPLY = `// Reply: { ok, message, patient } (same patient shape as /dashboard)
+const c = $('Check request').first().json;
+const old = $('Get prescription').all().map((i) => i.json).find((r) => r && String(r.patientId) === c.patientId) || {};
+return [{ json: { ok: true, message: 'Saved. PainPal will use these limits from now on.',
+  patient: { name: old.name, goal: c.goal, drug: c.drug, doseMg: c.doseMg, minIntervalH: c.minIntervalH, maxMg24h: c.maxMg24h } } }];`;
+  const X = (i) => i * 220;
+  const r4 = [
+    place(webhook("Webhook", "POST", "prescription"), [X(0), 300]),
+    place(code("Check request", RX_CHECK, "dose > 0, interval 1-24 h, max >= dose, goal 0-10"), [X(1), 300]),
+    place(ifNode("Valid request?", "valid", null), [X(2), 300]),
+    place(respond("Respond: bad request", {
+      respondWith: "json", responseBody: "={{ JSON.stringify({ ok: false, message: $json.error }) }}", options: { responseCode: 400 },
+    }), [X(3), 520]),
+    place({ parameters: { resource: "row", operation: "get", dataTableId: { __rl: true, mode: "name", value: "prescription" }, returnAll: true },
+      name: "Get prescription", type: "n8n-nodes-base.dataTable", typeVersion: 1, executeOnce: true }, [X(3), 300]),
+    place(code("Prescription row", RX_ROW), [X(4), 300]),
+    place({ parameters: { resource: "row", operation: "update", dataTableId: { __rl: true, mode: "name", value: "prescription" },
+      filters: { conditions: [{ keyName: "patientId", condition: "eq", keyValue: "={{ $json.patientId }}" }] },
+      columns: { mappingMode: "autoMapInputData", value: {}, matchingColumns: [], schema: [] }, options: {} },
+      name: "Update prescription", type: "n8n-nodes-base.dataTable", typeVersion: 1, alwaysOutputData: true }, [X(5), 300]),
+    place(code("Build reply", RX_REPLY), [X(6), 300]),
+    place(respond("Respond"), [X(7), 300]),
+    sticky("## PainPal · R4 · POST /prescription\nSaves the patient's as-needed medication: drug, dose mg, min hours between doses, " +
+      "24 h max, pain goal. Validated here (400 with a message); B4/B6 then use these limits as hard rules.\n" +
+      "In real use the prescriber would set these.\n\n**Owner:** Person B · built by n8n/build.js · **Activate** to use `/webhook/prescription`.",
+      [-40, -300], 560, 240),
+  ];
+  const r4Conn = wire([
+    ["Webhook", "Check request"], ["Check request", "Valid request?"],
+    ["Valid request?", "Get prescription", 0], ["Valid request?", "Respond: bad request", 1],
+    ["Get prescription", "Prescription row"], ["Prescription row", "Update prescription"],
+    ["Update prescription", "Build reply"], ["Build reply", "Respond"],
+  ]);
+  fs.writeFileSync(path.join(__dirname, "PainPal-R4-prescription.json"), JSON.stringify({
+    name: "PainPal · R4 · POST /prescription", nodes: finish("r4", r4), connections: r4Conn, settings: { executionOrder: "v1" },
+  }, null, 2) + "\n");
+  console.log(`R4:       n8n/PainPal-R4-prescription.json (${r4.length} nodes)`);
+}
+
 // ---------- R3: POST /demo-clock (demo only: moves "now" forward for /log and /dashboard) ----------
 {
   const CLOCK_CHECK = `// Validate { advanceMinutes } or { reset: true } (docs/API.md, R3). Bad requests get a 400.

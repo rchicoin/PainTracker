@@ -103,6 +103,23 @@ export async function logEntry(entry) {
   })
 }
 
+// R4: POST /prescription. n8n validates it (400 with a message if a value is out of range).
+export async function savePrescription(rx) {
+  const body = { patientId: PATIENT_ID, ...rx }
+
+  if (!BASE_URL) {
+    console.info('[fake] POST /prescription', body)
+    await fakeDelay()
+    return { ok: true, message: 'Saved (fake reply, n8n not connected yet).', patient: { ...FAKE_DASHBOARD.patient, ...rx } }
+  }
+
+  return request(`${BASE_URL}/prescription`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
 // R3: POST /demo-clock with { advanceMinutes } or { reset: true }. Demo only; the app always shows "Demo time".
 let fakeOffsetMin = 0
 export async function setDemoClock(change) {

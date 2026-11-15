@@ -140,3 +140,29 @@ console.log(`  pain log saved at demo time: ${logged.row.time} (dashboard now ${
 show("reset", postClock({ reset: true }));
 const d3 = getDashboard();
 console.log(`  after reset: now ${d3.now}, demo field present: ${"demo" in d3}`);
+
+// ---------- R4: prescription ----------
+console.log("\n=== R4 prescription ===");
+const r4 = load("PainPal-R4-prescription.json");
+function postRx(body) {
+  const out = { Webhook: [{ json: { body } }] };
+  out["Check request"] = runCode(codeOf(r4, "Check request"), out, out.Webhook);
+  if (!out["Check request"][0].json.valid) return { status: 400, body: { ok: false, message: out["Check request"][0].json.error } };
+  out["Get prescription"] = wrap(db.prescription);
+  const row = runCode(codeOf(r4, "Prescription row"), out, out["Get prescription"])[0].json;
+  db.prescription = db.prescription.map((r) => (r.patientId === row.patientId ? { ...r, ...row } : r)); // Update node
+  return { status: 200, body: runCode(codeOf(r4, "Build reply"), out, [])[0].json };
+}
+const good = { patientId: "P001", drug: "DemoRelief", doseMg: 5, minIntervalH: 4, maxMg24h: 20, goal: 3 };
+show("bad: dose 0", postRx({ ...good, doseMg: 0 }));
+show("bad: interval 30 h", postRx({ ...good, minIntervalH: 30 }));
+show("bad: max below one dose", postRx({ ...good, maxMg24h: 4 }));
+show("bad: goal 3.5", postRx({ ...good, goal: 3.5 }));
+show("bad: empty name", postRx({ ...good, drug: "  " }));
+show("bad: dose as text", postRx({ ...good, doseMg: "five" }));
+show("save 10 mg every 6 h, max 30, goal 4", postRx({ ...good, doseMg: 10, minIntervalH: 6, maxMg24h: 30, goal: 4 }));
+const d4 = getDashboard();
+console.log(`  dashboard patient ${JSON.stringify(d4.patient)}, mgMax24h ${d4.mgMax24h}`);
+const dose4 = postLog({ patientId: "P001", type: "dose" });
+console.log(`  dose logged with the new amount: ${dose4.row.mg} mg`);
+show("save back to the original", postRx(good));

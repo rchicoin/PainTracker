@@ -165,6 +165,7 @@ Response: `{ "ok": true, "now": "2026-11-15T16:40:00-07:00", "offsetMin": 120 }`
 - Response: `{ "ok": true, "message": "Saved. PainPal will use these limits from now on.", "patient": { ...same as /dashboard patient } }`
 - App note on the form: "Enter it exactly as on your prescription label." (In real use the prescriber would set these.)
 - Current values come from `/dashboard` → `patient`.
+- Also checked: `doseMg` ≤ 1000, `maxMg24h` ≤ 10000; numbers sent as text are rejected. `name` is never changed. **Built (R4).**
 
 ---
 

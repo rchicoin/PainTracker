@@ -69,6 +69,14 @@ button:disabled { opacity: 0.55; cursor: default; }
 .demo-clock-buttons { display: flex; gap: 6px; }
 .demo-clock-buttons .btn-small { margin-left: 0; }
 
+/* R4: My medication */
+.med-summary { margin: 0 0 10px; font-size: 0.9rem; }
+.med-edit { margin-left: 0; }
+.med-form { display: grid; gap: 8px; }
+.med-form .confirm-note { margin: 0; }
+.med-field { display: grid; gap: 4px; font-size: 0.85rem; font-weight: 600; }
+.med-field .text-input { margin: 0; }
+
 /* ---------- Cards ---------- */
 .card {
   background: var(--card);

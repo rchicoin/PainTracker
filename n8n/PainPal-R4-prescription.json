@@ -1,0 +1,291 @@
+{
+  "name": "PainPal · R4 · POST /prescription",
+  "nodes": [
+    {
+      "id": "5a1f2542-4c0b-27a9-5bad-f970a05dcc9d",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "prescription",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://pain-tracker-rosy.vercel.app,http://localhost:5173"
+        }
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "webhookId": "b3def97a-d894-5a22-b37a-852ea3d35416",
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "id": "e15c2710-f8f8-15f5-01e1-a263175d113c",
+      "parameters": {
+        "jsCode": "// Validate the prescription (docs/API.md, R4). Bad values get a 400 with a clear message.\n// These become hard rules for every dose check, so nothing is guessed or rounded silently.\nconst b = $input.first().json.body || {};\nconst num = (x) => (x === null || x === undefined || x === '' ? NaN : Number(x));\nconst drug = String(b.drug ?? '').trim();\nconst doseMg = num(b.doseMg), minIntervalH = num(b.minIntervalH), maxMg24h = num(b.maxMg24h), goal = num(b.goal);\nlet error = null;\nif (drug.length < 1 || drug.length > 40) error = 'Medication name must be 1 to 40 characters';\nelse if (!(doseMg > 0 && doseMg <= 1000)) error = 'Dose must be more than 0 mg (up to 1000 mg)';\nelse if (!(minIntervalH >= 1 && minIntervalH <= 24)) error = 'Hours between doses must be from 1 to 24';\nelse if (!(maxMg24h >= doseMg && maxMg24h <= 10000)) error = 'Daily maximum must be at least one dose (' + doseMg + ' mg)';\nelse if (!(Number.isInteger(goal) && goal >= 0 && goal <= 10)) error = 'Pain goal must be a whole number from 0 to 10';\nreturn [{ json: { valid: !error, error, patientId: String(b.patientId || 'P001'), drug, doseMg, minIntervalH, maxMg24h, goal } }];"
+      },
+      "name": "Check request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "notes": "dose > 0, interval 1-24 h, max >= dose, goal 0-10",
+      "notesInFlow": true,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "id": "15e59cdf-ff4c-d2b4-3fdd-b286d2977d8d",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "valid-request-",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Valid request?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "id": "bb7b5062-310e-6da0-c1ac-e0e2bfc596b0",
+      "parameters": {
+        "respondWith": "json",
+        "options": {
+          "responseCode": 400
+        },
+        "responseBody": "={{ JSON.stringify({ ok: false, message: $json.error }) }}"
+      },
+      "name": "Respond: bad request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        520
+      ]
+    },
+    {
+      "id": "82800c1d-97d8-6251-119d-5769ba46e660",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "prescription"
+        },
+        "returnAll": true
+      },
+      "name": "Get prescription",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "executeOnce": true,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "id": "3d281bf7-dd7e-611d-8ab7-60ed48653997",
+      "parameters": {
+        "jsCode": "// Only the fields the patient can change; name stays as it is\nconst c = $('Check request').first().json;\nconst old = $input.all().map((i) => i.json).find((r) => r && String(r.patientId) === c.patientId);\nif (!old) throw new Error('No prescription row for patient ' + c.patientId);\nreturn [{ json: { patientId: c.patientId, drug: c.drug, doseMg: c.doseMg, minIntervalH: c.minIntervalH, maxMg24h: c.maxMg24h, goal: c.goal } }];"
+      },
+      "name": "Prescription row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "id": "b5ee5167-68c5-31b2-1ed4-8b0c9bab8dca",
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "prescription"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "patientId",
+              "condition": "eq",
+              "keyValue": "={{ $json.patientId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Update prescription",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "alwaysOutputData": true,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "id": "25503592-0686-6e84-f5a1-7af53bbf6e0a",
+      "parameters": {
+        "jsCode": "// Reply: { ok, message, patient } (same patient shape as /dashboard)\nconst c = $('Check request').first().json;\nconst old = $('Get prescription').all().map((i) => i.json).find((r) => r && String(r.patientId) === c.patientId) || {};\nreturn [{ json: { ok: true, message: 'Saved. PainPal will use these limits from now on.',\n  patient: { name: old.name, goal: c.goal, drug: c.drug, doseMg: c.doseMg, minIntervalH: c.minIntervalH, maxMg24h: c.maxMg24h } } }];"
+      },
+      "name": "Build reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "id": "3cd8b91d-f368-5f61-6167-1c94a90f6470",
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {}
+      },
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1540,
+        300
+      ]
+    },
+    {
+      "id": "8dd1992a-c877-8b2b-1e48-aae2b5591295",
+      "parameters": {
+        "content": "## PainPal · R4 · POST /prescription\nSaves the patient's as-needed medication: drug, dose mg, min hours between doses, 24 h max, pain goal. Validated here (400 with a message); B4/B6 then use these limits as hard rules.\nIn real use the prescriber would set these.\n\n**Owner:** Person B · built by n8n/build.js · **Activate** to use `/webhook/prescription`.",
+        "width": 560,
+        "height": 240
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check request": {
+      "main": [
+        [
+          {
+            "node": "Valid request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid request?": {
+      "main": [
+        [
+          {
+            "node": "Get prescription",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: bad request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get prescription": {
+      "main": [
+        [
+          {
+            "node": "Prescription row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prescription row": {
+      "main": [
+        [
+          {
+            "node": "Update prescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update prescription": {
+      "main": [
+        [
+          {
+            "node": "Build reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build reply": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

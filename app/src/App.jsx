@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { USING_FAKE_DATA, getDashboard, logEntry, setDemoClock } from './api.js'
+import { USING_FAKE_DATA, getDashboard, logEntry, savePrescription, setDemoClock } from './api.js'
 import DemoClock from './components/DemoClock.jsx'
+import MedicationCard from './components/MedicationCard.jsx'
 import { formatTime } from './format.js'
 import MyStatus from './components/MyStatus.jsx'
 import PainForm from './components/PainForm.jsx'
@@ -40,12 +41,16 @@ export default function App() {
 
   // Send any entry to n8n, show its reply, then refresh the dashboard and
   // highlight what changed for 20 s. `onDone` lets a form reset itself.
-  async function handleLog(entry, onDone) {
+  const handleLog = (entry, onDone) => send(() => logEntry(entry), onDone)
+  // R4: save the prescription; n8n uses the new limits from the next check on.
+  const handlePrescription = (rx, onDone) => send(() => savePrescription(rx), onDone)
+
+  async function send(call, onDone) {
     const before = dash
     setBusy(true)
     setError(null)
     try {
-      setReply(await logEntry(entry))
+      setReply(await call())
       onDone?.()
       await refreshAndHighlight(before)
     } catch (err) {
@@ -128,6 +133,7 @@ export default function App() {
               <QuickActions onLog={handleLog} busy={busy} dash={dash} />
               <WalkTracker tracker={walkTracker} />
               {dash && <LearningCard model={dash.model} />}
+              {dash && <MedicationCard patient={dash.patient} busy={busy} onSave={handlePrescription} />}
             </div>
           </div>
 
