@@ -55,6 +55,36 @@ Fill in names: A = ________  B = Reagan
 - ~~**B8** Weekly summary~~ (dropped to keep it simple)
 - [x] **B9** Workflows exported to `n8n/` (built by `node n8n/build.js`); error-alert emails dropped
 
+### Round 2: "show an input, watch it update" (Sunday, before the 11 AM freeze)
+Goal: a live demo where one input visibly changes the chart, the prediction and the recommendations.
+Start together (~20 min): agree on the **Round 2** section of `docs/API.md`. Then work in parallel against its fake JSON.
+Ordered by demo value. **If time runs short, cut from the bottom.** Items 1 + 2 alone already make a good demo.
+
+| # | Feature | Person B (n8n) | Person A (app) | Size |
+|---|---|---|---|---|
+| R1 | **Physio time entry** | `/log` accepts `{type:"physio", at}` → `schedule`; reply says how the prediction moved | "Physio/appointment at __:__" control (today/tomorrow) | B 30 min · A 45 min |
+| R2 | **"Why" card** | `/dashboard` returns `why` (what moved the prediction, in minutes) | Card under "pain likely back" | B 1 h · A 45 min |
+| R3 | **Demo clock** | `POST /demo-clock`; `/log` + `/dashboard` use the shifted time | Bar "Demo time 2:40 PM [+30 min] [+1 h] [Reset]", clearly labelled | B 1.5 h · A 1 h |
+| R4 | **My medication screen** | `POST /prescription` with validation (400 on bad values) | Form: name, dose mg, min hours between doses, daily max mg, pain goal | B 1 h · A 1.5 h |
+| R5 | **Forecast line** | `/dashboard` returns `forecast` points | Dashed line on the chart: last dose → "pain likely back" | B 45 min · A 1 h |
+
+- [ ] **R0** API agreement (together)
+- [ ] **R1-B** · [ ] **R1-A** Physio time entry
+- [ ] **R2-B** · [ ] **R2-A** "Why" card
+- [ ] **R3-B** · [ ] **R3-A** Demo clock
+- [ ] **R4-B** · [ ] **R4-A** My medication screen
+- [ ] **R5-B** · [ ] **R5-A** Forecast line
+- [ ] Data refresh + re-import Setup/B4/B6 + full phone test (together, 8:30–10 AM)
+
+**Fallbacks**
+- Physio entry not working on a phone by 9 AM → remove physio from the model instead (~20 min). Don't film it half-done.
+- Demo clock not ready → log a real dose 1–3 h before filming the learning clip.
+- Re-importing B4: unpublish + delete the old one first ("conflicting URL path" otherwise).
+
+**Video moment (~2:00):** log pain 6 → point on chart → "Took my dose" → next allowed dose shows → add "Physio at 3:00 PM" →
+"pain likely back" moves earlier, "why" card shows *Physio: −32 min*, physio heads-up appears → **+1 h** twice → log pain 5 →
+"PainPal learned from your last dose", and the "Your personal pattern" line in the "why" card changes.
+
 ### Both: Submission
 - [ ] Regenerate demo data so "last 24 h" looks live (Sunday morning)
 - [ ] Record demo video (≤ 3 min): see `docs/DEMO.md`
@@ -67,8 +97,12 @@ Fill in names: A = ________  B = Reagan
 | Time | Person A | Person B | Checkpoint |
 |---|---|---|---|
 | Sat → ~1 AM | A1–A4 | B1–B4 | **Log pain in app → saved in n8n → reply shows** |
-| Sun 8–10 AM | A5–A6 | B5–B7 | Dashboard live; walk logged from phone |
-| Sun 10–11 AM | A7–A8 | B8–B9 | **11 AM build freeze** |
+| Sat → ~2 AM | A5–A8 | B5–B6, B9 | ✅ App live on Vercel, talking to n8n; learning works |
+| Sun 2:00–2:20 | R0 API agreement | R0 API agreement | Round 2 fields agreed in `docs/API.md` |
+| Sun 2:20–4:00 | R1-A, R2-A (fake JSON) | R1-B, R2-B (live) | Physio entry moves the prediction; "why" card |
+| Sun ~7:00–8:30 | R3-A → R5-A | R3-B → R5-B | Demo clock, medication screen, forecast |
+| Sun 8:30–10:00 | Phone test | Data refresh + re-import | Everything works on a phone |
+| Sun 10–11 AM | Buffer + fixes | Buffer + fixes | **11 AM build freeze** |
 | Sun 11–2:30 | Video, Devpost, README, final push | | Submitted |
 
 ## Claude Code starter prompts (paste into the Claude Code panel)
