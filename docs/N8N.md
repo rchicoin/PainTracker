@@ -54,15 +54,27 @@ The Get nodes find their tables by name, so nothing to select. Click **Execute w
 4. **IF** 24 h max reached? → **IF** dose allowed now? → **Set** `rule` text (visible rules on the canvas)
 5. Output = the `/dashboard` JSON (`docs/API.md`) plus `status` (for the /log reply) and `prediction` (for B5)
 
-## B4: /log
-**Trigger:** Webhook POST `/log` (Respond: using Respond to Webhook; CORS set)
+## Import B4 and B6 (the app's two endpoints)
+For each URL: **Create workflow** → **⋯** → **Import from URL** → **Save** → switch **Active** on (top right).
+- B4: `https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/PainPal-B4-log.json`
+- B6: `https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/PainPal-B6-dashboard.json`
 
-1. **Switch** on `body.type`: pain / dose / meal / walk
-2. pain → **HTTP Request** Open-Meteo `current=temperature_2m,pressure_msl,precipitation` (lat 49.26, lon -123.25) → insert `pain_log`
-3. dose → insert `doses` → **Code** check too early / over 24 h max → set `warning`
-4. meal → insert `meals`; walk → insert `walks`
-5. **Execute Workflow** → Check rules & predict
-6. **Respond to Webhook** with `{ ok, message, warning, status }`
+Then the app uses `VITE_N8N_URL=https://team17.app.n8n.cloud/webhook` (set it in Vercel → Settings → Environment Variables, then redeploy).
+CORS allows `https://pain-tracker-rosy.vercel.app` and `http://localhost:5173`.
+B4 and B6 contain the same "Get tables → weather → Compute status" nodes as B3 (built from the same source), so they need no
+sub-workflow ID. B3 stays as the sub-workflow for B7 and for testing. Local tests: `node n8n/test-api.js`.
+
+## B4: /log
+**Trigger:** Webhook POST `/log` (Respond to Webhook; CORS set)
+
+1. **Code: Check request** → **IF** valid? (no → 400 `{ ok: false, message }`)
+2. **Switch** on `type`: pain / dose / meal / walk
+3. pain → **HTTP Request** Open-Meteo current weather (if down, saved without weather) → insert `pain_log`
+4. dose → get `prescription` → mg from the prescription (never from the app) → insert `doses`
+5. meal → insert `meals`; walk → insert `walks` (`km` empty for manual walks)
+6. Get tables → weather → **Compute status** (same as B3)
+7. **Code: Build reply**: message; `warning` if the dose was too early / over the 24 h max (+ 811 safety text) or pain ≥ 9
+8. **Respond to Webhook** with `{ ok, message, warning, status }`
 
 ## B5: Personal learning (inside /log, pain branch)
 When a pain log is **above goal** and there's a dose before it with no `actualHours` yet:
@@ -73,7 +85,7 @@ When a pain log is **above goal** and there's a dose before it with no `actualHo
 This is the "keeps learning from each patient" part. Show it in the video.
 
 ## B6: /dashboard
-Webhook GET `/dashboard` → Execute Workflow (Check rules & predict) → Respond with dashboard JSON.
+Webhook GET `/dashboard?patientId=P001` (optional `&now=ISO` for demo mode) → Get tables → weather → **Compute status** → Respond with the dashboard JSON.
 
 ## B7: Heads-ups
 Schedule (every 30 min) → for each patient: Check rules & predict →

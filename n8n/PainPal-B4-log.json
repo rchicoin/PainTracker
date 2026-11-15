@@ -1,0 +1,969 @@
+{
+  "name": "PainPal · B4 · POST /log",
+  "nodes": [
+    {
+      "id": "da441c90-1bc2-2881-f5c1-22e5d9c8ae9c",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "log",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://pain-tracker-rosy.vercel.app,http://localhost:5173"
+        }
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "webhookId": "00c39eb6-3f86-02b6-1328-e5800c6a494e",
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "id": "c3d8df77-d816-fb4c-5837-4e823dd80c9e",
+      "parameters": {
+        "jsCode": "// Validate the app's request (docs/API.md). Bad requests get a 400 with a clear message.\nconst localIso = (d) => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Vancouver',\n  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',\n  timeZoneName: 'longOffset' }).formatToParts(d).map((x) => [x.type, x.value]));\n  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}${p.timeZoneName.replace('GMT', '') || '+00:00'}`; };\nconst body = $input.first().json.body || {};\nconst types = ['pain', 'dose', 'meal', 'walk'];\nconst isNum = (x) => x !== null && x !== undefined && x !== '' && Number.isFinite(Number(x));\nlet error = null;\nif (!types.includes(body.type)) error = 'type must be one of: pain, dose, meal, walk';\nelse if (body.type === 'pain' && !(isNum(body.score) && Number.isInteger(Number(body.score)) && body.score >= 0 && body.score <= 10))\n  error = 'score must be a whole number from 0 to 10';\nelse if (body.type === 'walk' && !(isNum(body.minutes) && body.minutes > 0 && body.minutes <= 600))\n  error = 'minutes must be a number from 1 to 600';\nelse if (body.type === 'walk' && body.km !== null && body.km !== undefined && !(isNum(body.km) && body.km >= 0 && body.km < 100))\n  error = 'km must be a number, or null for manual walks';\nreturn [{ json: { valid: !error, error, type: body.type, patientId: String(body.patientId || 'P001'), time: localIso(new Date()), body } }];"
+      },
+      "name": "Check request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "id": "de98d773-c66f-07b5-f37b-e83e28ded9f8",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "valid-request-",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Valid request?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "id": "6ee1af42-9817-48b3-85cc-3733fa0591d9",
+      "parameters": {
+        "respondWith": "json",
+        "options": {
+          "responseCode": 400
+        },
+        "responseBody": "={{ JSON.stringify({ ok: false, message: $json.error }) }}"
+      },
+      "name": "Respond: bad request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        520
+      ]
+    },
+    {
+      "id": "d4de4dd5-c505-d21a-1c30-042eb72ff671",
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "pain",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pain"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "dose",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "dose"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "meal",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "meal"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "walk",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "walk"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Type?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "id": "a3bdfaab-3802-a159-672a-16fbc2aa0ab9",
+      "parameters": {
+        "url": "https://api.open-meteo.com/v1/forecast",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "49.26"
+            },
+            {
+              "name": "longitude",
+              "value": "-123.25"
+            },
+            {
+              "name": "current",
+              "value": "temperature_2m,pressure_msl,precipitation"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Pain: weather now",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "id": "4ca4b214-785a-3e2b-6f93-886081b47523",
+      "parameters": {
+        "jsCode": "// Pain log row + the weather right now (Open-Meteo). Weather may be missing; the log is still saved.\nconst c = $('Check request').first().json;\nconst w = ($input.first().json || {}).current || {};\nreturn [{ json: { patientId: c.patientId, time: c.time, score: Number(c.body.score), note: String(c.body.note || '').slice(0, 200),\n  pressureHpa: w.pressure_msl ?? null, tempC: w.temperature_2m ?? null, precipMm: w.precipitation ?? null } }];"
+      },
+      "name": "Pain row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "id": "86fce1c4-9fbe-3b54-50e1-c740db3a1ecb",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "prescription"
+        },
+        "returnAll": true
+      },
+      "name": "Dose: get prescription",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "executeOnce": true,
+      "position": [
+        880,
+        200
+      ]
+    },
+    {
+      "id": "19cab944-6afe-03a2-7376-3462ca318b59",
+      "parameters": {
+        "jsCode": "// As-needed dose: the amount always comes from the prescription, never from the app.\nconst c = $('Check request').first().json;\nconst rx = $input.all().map((i) => i.json).find((r) => String(r.patientId) === c.patientId);\nif (!rx) throw new Error('No prescription for patient ' + c.patientId);\nreturn [{ json: { patientId: c.patientId, time: c.time, mg: Number(rx.doseMg), drug: rx.drug, kind: 'as-needed' } }];"
+      },
+      "name": "Dose row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "notes": "mg from the prescription",
+      "notesInFlow": true,
+      "position": [
+        1100,
+        200
+      ]
+    },
+    {
+      "id": "6bcab3f8-57fa-8488-d035-f7af277e6aa0",
+      "parameters": {
+        "jsCode": "const c = $('Check request').first().json;\nreturn [{ json: { patientId: c.patientId, time: c.time, meal: String(c.body.meal || 'meal').slice(0, 40) } }];"
+      },
+      "name": "Meal row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        400
+      ]
+    },
+    {
+      "id": "a545a69f-ef98-b9d2-6375-284a3e668ba8",
+      "parameters": {
+        "jsCode": "// Walk: GPS walks have km; manual walks send km = null (stored empty). Never coordinates.\nconst c = $('Check request').first().json;\nconst km = c.body.km === null || c.body.km === undefined || c.body.km === '' ? null : Math.round(Number(c.body.km) * 100) / 100;\nreturn [{ json: { patientId: c.patientId, time: c.time, km, minutes: Math.round(Number(c.body.minutes)),\n  source: c.body.source === 'auto' ? 'auto' : 'manual' } }];"
+      },
+      "name": "Walk row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "notes": "km may be null (manual walk)",
+      "notesInFlow": true,
+      "position": [
+        1100,
+        600
+      ]
+    },
+    {
+      "id": "b9e7ca5b-a3da-0774-09f3-759e2d7059ba",
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pain_log"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert pain_log",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        0
+      ]
+    },
+    {
+      "id": "cddd67ae-16f6-e191-d548-1ff54c071b81",
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "doses"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert doses",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        200
+      ]
+    },
+    {
+      "id": "e76d370c-796d-dbea-b37a-a75843e07117",
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "meals"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert meals",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        400
+      ]
+    },
+    {
+      "id": "8644a69b-72a4-7ed1-2406-6cd5b180b66c",
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "walks"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert walks",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        600
+      ]
+    },
+    {
+      "id": "80cb0c9e-bb89-03de-a8c6-44b4f9827457",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "prescription"
+        },
+        "returnAll": true
+      },
+      "name": "Get prescription",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "4cd2e875-2c7c-08bd-d854-07a592763933",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "doses"
+        },
+        "returnAll": true
+      },
+      "name": "Get doses",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "36039c19-66fc-e144-f526-1cb3a4ed5e09",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pain_log"
+        },
+        "returnAll": true
+      },
+      "name": "Get pain_log",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1980,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "631851df-bbef-f6a1-3e52-c27790db8766",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "meals"
+        },
+        "returnAll": true
+      },
+      "name": "Get meals",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "70fe9f65-2e6e-aeb5-052b-61a3af0de071",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "walks"
+        },
+        "returnAll": true
+      },
+      "name": "Get walks",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2420,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "a9a6e3d1-f375-ac0f-3e74-49e0d4b4290b",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "schedule"
+        },
+        "returnAll": true
+      },
+      "name": "Get schedule",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "60770564-0525-d64e-cbb5-cf9c2d22d79c",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "patient_model"
+        },
+        "returnAll": true
+      },
+      "name": "Get patient_model",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2860,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "de117797-9361-2ef9-64e1-5c68ea1db854",
+      "parameters": {
+        "url": "https://api.open-meteo.com/v1/forecast",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "49.26"
+            },
+            {
+              "name": "longitude",
+              "value": "-123.25"
+            },
+            {
+              "name": "hourly",
+              "value": "pressure_msl,temperature_2m,precipitation"
+            },
+            {
+              "name": "past_days",
+              "value": "2"
+            },
+            {
+              "name": "forecast_days",
+              "value": "1"
+            },
+            {
+              "name": "timezone",
+              "value": "GMT"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Get weather (Open-Meteo)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3080,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "notes": "If weather fails, prediction still works (weather counts as average)",
+      "notesInFlow": true
+    },
+    {
+      "id": "bd6011df-ea18-b312-8dd8-e3dbc8e29ac2",
+      "parameters": {
+        "jsCode": "// Built by n8n/build.js from ml/predict.js + n8n/code/check-rules-and-predict.js. Edit those, then rebuild.\n// Model weights from ml/weights.json (synthetic, 30 fictional patients, 2036 doses).\nconst WEIGHTS = {\"model\":\"ridge\",\"target\":\"hours until pain rises above goal after an as-needed dose\",\"trainedOn\":\"synthetic, 30 fictional patients, 2036 doses\",\"features\":[\"hour_sin\",\"hour_cos\",\"evening\",\"pain_at_dose\",\"walk_km_prev_3h\",\"walk_min_prev_3h\",\"steps_prev_3h\",\"physio_next_2h\",\"hours_since_scheduled_med\",\"hours_since_meal\",\"pressure_change_6h\",\"temp_c\",\"precip_mm\"],\"mean\":[-0.059298,-0.513844,0.106582,5.969548,0.2039,3.222986,1016.464637,0.02947,5.450388,5.980417,-0.165894,8.042338,0.281434],\"scale\":[0.746339,0.41883,0.30858,1.440386,0.594858,9.482814,790.233074,0.169119,4.154466,4.366114,3.916826,1.78613,0.719473],\"coef\":[-0.058907,-0.058552,-0.248723,-0.470103,-0.195391,0.007972,-0.163123,-0.089004,-0.132273,-0.135733,0.288333,-0.036423,-0.089459],\"intercept\":2.817588,\"offsetUpdate\":{\"keep\":0.7,\"learn\":0.3},\"testErrorMin\":{\"patientMedian\":44,\"linear\":38,\"linearPlusOffset\":35}};\n\r\nconst TZ = \"America/Vancouver\";\r\nconst MIN_PER_KM = 16;          // average pace: estimates km for manual walks (km = null)\r\nconst HOUSEHOLD_STEPS_3H = 750; // steps in 3 h without a walk (no step counter in the app yet)\r\nconst STEPS_PER_KM = 1300;\r\n\r\nconst toDate = (t) => (t instanceof Date ? t : new Date(t));\r\nconst hoursBetween = (a, b) => (toDate(b) - toDate(a)) / 3600000;\r\nconst isNum = (x) => x !== null && x !== undefined && x !== \"\" && Number.isFinite(Number(x));\r\n\r\n/** Local hour of day (0-24, with minutes) in Vancouver. */\r\nfunction localHour(t) {\r\n  const parts = new Intl.DateTimeFormat(\"en-CA\", { timeZone: TZ, hour: \"numeric\", minute: \"numeric\", hourCycle: \"h23\" })\r\n    .formatToParts(toDate(t));\r\n  const get = (type) => Number(parts.find((p) => p.type === type).value);\r\n  return get(\"hour\") + get(\"minute\") / 60;\r\n}\r\n\r\n/** Hours since the latest event at or before `time`; null if none in the last 24 h (unknown). */\r\nfunction hoursSinceLast(times, time, cap = 12) {\r\n  const h = times.map((t) => hoursBetween(t, time)).filter((x) => x >= 0 && x <= 24);\r\n  return h.length ? Math.min(cap, Math.min(...h)) : null;\r\n}\r\n\r\n/** km for a walk: GPS distance, or estimated from minutes for manual walks (km = null). */\r\nfunction walkKm(w) {\r\n  return isNum(w.km) ? Number(w.km) : Number(w.minutes || 0) / MIN_PER_KM;\r\n}\r\n\r\n/**\r\n * doseTime:      time of the as-needed dose\r\n * painAtDose:    pain score at the dose (0-10), or null\r\n * walks:         [{ time, km|null, minutes }]  (time = walk start)\r\n * steps:         steps in the 3 h before the dose, or null (estimated from walks)\r\n * calendar:      [{ start, title }]            (from Google Calendar / schedule table)\r\n * scheduledMeds: [times]                       (scheduled medication taken)\r\n * meals:         [times]\r\n * weather:       { pressureNow, pressure6hAgo, tempC, precipMm } (any may be null)\r\n */\r\nfunction buildFeatures({ doseTime, painAtDose = null, walks = [], steps = null, calendar = [],\r\n  scheduledMeds = [], meals = [], weather = {} }) {\r\n  const hour = localHour(doseTime);\r\n  const recent = walks.filter((w) => {\r\n    const end = new Date(toDate(w.time).getTime() + Number(w.minutes || 0) * 60000);\r\n    const h = hoursBetween(end, doseTime);\r\n    return h >= 0 && h < 3; // walk finished in the 3 h before the dose\r\n  });\r\n  const km = recent.reduce((s, w) => s + walkKm(w), 0);\r\n  const physioSoon = calendar.some((e) => /physio/i.test(e.title || \"\") &&\r\n    hoursBetween(doseTime, e.start) >= 0 && hoursBetween(doseTime, e.start) < 2);\r\n  const w = weather || {};\r\n  return {\r\n    hour_sin: Math.sin((2 * Math.PI * hour) / 24),\r\n    hour_cos: Math.cos((2 * Math.PI * hour) / 24),\r\n    evening: hour >= 18 && hour < 22 ? 1 : 0,\r\n    pain_at_dose: isNum(painAtDose) ? Number(painAtDose) : null,\r\n    walk_km_prev_3h: km,\r\n    walk_min_prev_3h: recent.reduce((s, x) => s + Number(x.minutes || 0), 0),\r\n    steps_prev_3h: isNum(steps) ? Number(steps) : HOUSEHOLD_STEPS_3H + km * STEPS_PER_KM,\r\n    physio_next_2h: physioSoon ? 1 : 0,\r\n    hours_since_scheduled_med: hoursSinceLast(scheduledMeds, doseTime),\r\n    hours_since_meal: hoursSinceLast(meals, doseTime),\r\n    pressure_change_6h: isNum(w.pressureNow) && isNum(w.pressure6hAgo) ? w.pressureNow - w.pressure6hAgo : null,\r\n    temp_c: isNum(w.tempC) ? Number(w.tempC) : null,\r\n    precip_mm: isNum(w.precipMm) ? Number(w.precipMm) : null,\r\n  };\r\n}\r\n\r\n/** Global model only (no personal offset). Unknown features count as average (no effect). */\r\nfunction globalPrediction(weights, features) {\r\n  return weights.features.reduce((h, name, i) => {\r\n    const x = isNum(features[name]) ? Number(features[name]) : weights.mean[i];\r\n    return h + weights.coef[i] * ((x - weights.mean[i]) / weights.scale[i]);\r\n  }, weights.intercept);\r\n}\r\n\r\n/** Hours of relief for this patient = global model + their personal offset, kept in a sane range. */\r\nfunction predictHours(weights, features, offsetHours = 0) {\r\n  const offset = isNum(offsetHours) ? Number(offsetHours) : 0;\r\n  return Math.min(8, Math.max(0.5, globalPrediction(weights, features) + offset));\r\n}\r\n\r\n/** B5 learning: after a dose's real relief time is known, nudge the patient's offset. */\r\nfunction updateOffset(weights, offsetHours, actualHours, features) {\r\n  const { keep, learn } = weights.offsetUpdate || { keep: 0.7, learn: 0.3 };\r\n  const offset = isNum(offsetHours) ? Number(offsetHours) : 0;\r\n  return keep * offset + learn * (actualHours - globalPrediction(weights, features));\r\n}\r\n\n// B3 · Check rules & predict: the logic of the \"Compute status\" Code node.\r\n// n8n/build.js pastes this file (plus the helpers from ml/predict.js and ml/weights.json) into the node.\r\n// Test locally: node n8n/test-b3.js\r\n//\r\n// Returns everything GET /dashboard needs (docs/API.md) plus `status` (for the /log reply)\r\n// and `prediction` (for B5 learning / the predictions table).\r\n// Prescription limits are hard rules here. The model never changes them.\r\n\r\nfunction checkRulesAndPredict({ patientId, now, weights, prescription, doses, pain, meals, walks, schedule, patientModel, weatherApi }) {\r\n  const NOW = now ? new Date(now) : new Date();\r\n  const H = 3600000;\r\n  const mine = (rows) => (rows || []).filter((r) => r && String(r.patientId) === String(patientId));\r\n  const byTime = (field) => (a, b) => new Date(a[field]) - new Date(b[field]);\r\n  const upToNow = (field) => (r) => new Date(r[field]) <= NOW;\r\n\r\n  // ---------- inputs ----------\r\n  const rx = mine(prescription)[0];\r\n  if (!rx) throw new Error(`No prescription row for patient ${patientId}`);\r\n  const doseMg = Number(rx.doseMg), intervalH = Number(rx.minIntervalH), maxMg = Number(rx.maxMg24h), goal = Number(rx.goal);\r\n\r\n  const allDoses = mine(doses).filter(upToNow(\"time\")).sort(byTime(\"time\"));\r\n  const asNeeded = allDoses.filter((d) => !d.kind || d.kind === \"as-needed\");\r\n  const scheduledMeds = allDoses.filter((d) => d.kind === \"scheduled\").map((d) => d.time);\r\n  const painLog = mine(pain).filter(upToNow(\"time\")).sort(byTime(\"time\"));\r\n  const mealTimes = mine(meals).filter(upToNow(\"time\")).map((m) => m.time);\r\n  const walkRows = mine(walks).filter(upToNow(\"time\")).sort(byTime(\"time\"));\r\n  const calendar = mine(schedule).sort(byTime(\"start\"));\r\n  const model = mine(patientModel)[0] || { offsetHours: 0, dosesLearned: 0 };\r\n\r\n  // ---------- prescription rules ----------\r\n  const doseTimes = asNeeded.map((d) => new Date(d.time).getTime());\r\n  const mgIn24h = (t) => asNeeded.filter((d) => {\r\n    const x = new Date(d.time).getTime();\r\n    return x > t - 24 * H && x <= t;\r\n  }).reduce((s, d) => s + Number(d.mg || doseMg), 0);\r\n\r\n  const mgUsed24h = mgIn24h(NOW.getTime());\r\n  const lastDoseAt = doseTimes.length ? doseTimes[doseTimes.length - 1] : null;\r\n  // earliest time that respects BOTH the minimum interval and the 24 h maximum\r\n  let next = Math.max(NOW.getTime(), lastDoseAt === null ? 0 : lastDoseAt + intervalH * H);\r\n  for (let i = 0; i < 50 && mgIn24h(next) + doseMg > maxMg; i++) {\r\n    const inWindow = doseTimes.filter((x) => x > next - 24 * H && x <= next);\r\n    next = inWindow[0] + 24 * H;\r\n  }\r\n  const doseAllowedNow = next <= NOW.getTime();\r\n  const maxReached = mgUsed24h + doseMg > maxMg;\r\n\r\n  // ---------- prediction for the last as-needed dose ----------\r\n  let prediction = null;\r\n  if (lastDoseAt !== null) {\r\n    const doseTime = new Date(lastDoseAt);\r\n    const painBefore = painLog.filter((p) => {\r\n      const h = (doseTime - new Date(p.time)) / H;\r\n      return h >= 0 && h <= 1;\r\n    }).pop();\r\n    const features = buildFeatures({\r\n      doseTime,\r\n      painAtDose: painBefore ? painBefore.score : null,\r\n      walks: walkRows,\r\n      calendar,\r\n      scheduledMeds,\r\n      meals: mealTimes,\r\n      weather: weatherAt(weatherApi, doseTime),\r\n    });\r\n    const hours = predictHours(weights, features, model.offsetHours);\r\n    prediction = {\r\n      doseTime: localIso(doseTime),\r\n      predictedHours: round(hours, 2),\r\n      globalHours: round(globalPrediction(weights, features), 2),\r\n      offsetHours: round(Number(model.offsetHours) || 0, 3),\r\n      painLikelyBackAt: localIso(new Date(Math.round((lastDoseAt + hours * H) / 60000) * 60000)),\r\n      features,\r\n    };\r\n  }\r\n\r\n  // ---------- patterns (from the patient's own history) ----------\r\n  const reliefHistory = asNeeded.map((d, i) => {\r\n    const t = new Date(d.time).getTime();\r\n    const until = i + 1 < asNeeded.length ? new Date(asNeeded[i + 1].time).getTime() : NOW.getTime();\r\n    const back = painLog.find((p) => {\r\n      const x = new Date(p.time).getTime();\r\n      return x > t && x <= until && Number(p.score) > goal;\r\n    });\r\n    const h = back ? (new Date(back.time).getTime() - t) / H : null;\r\n    return h !== null && h <= 8 ? h : null;\r\n  }).filter((h) => h !== null);\r\n  const reliefHours = reliefHistory.length ? median(reliefHistory) : null;\r\n\r\n  const patterns = [];\r\n  if (reliefHours !== null) patterns.push(`Your relief usually lasts about ${round(reliefHours, 1)} hours.`);\r\n\r\n  const walkRises = walkRows.filter((w) => walkKm(w) > 1).map((w) => {\r\n    const start = new Date(w.time).getTime();\r\n    const end = start + Number(w.minutes || 0) * 60000;\r\n    const before = painLog.filter((p) => new Date(p.time).getTime() <= start).pop();\r\n    const after = painLog.filter((p) => { const x = new Date(p.time).getTime(); return x > end && x <= end + 2 * H; });\r\n    if (!before || !after.length) return null;\r\n    return Math.max(...after.map((p) => Number(p.score))) - Number(before.score);\r\n  }).filter((x) => x !== null);\r\n  const walkRise = walkRises.length >= 3 ? mean(walkRises) : 0;\r\n  if (walkRise >= 1) patterns.push(`Walks over 1 km raise your pain about ${Math.round(walkRise)} points within 2 hours.`);\r\n\r\n  const blocks = [[\"Mornings (6 AM–12 PM)\", 6, 12], [\"Afternoons (12–6 PM)\", 12, 18], [\"Evenings (6–10 PM)\", 18, 22]]\r\n    .map(([label, a, b]) => {\r\n      const s = painLog.filter((p) => { const h = localHour(p.time); return h >= a && h < b; }).map((p) => Number(p.score));\r\n      return { label, avg: s.length >= 5 ? mean(s) : null };\r\n    }).filter((x) => x.avg !== null).sort((x, y) => y.avg - x.avg);\r\n  if (blocks.length) patterns.push(`${blocks[0].label} are your hardest time.`);\r\n\r\n  const wet = painLog.filter((p) => Number(p.precipMm) > 0).map((p) => Number(p.score));\r\n  const dry = painLog.filter((p) => isNum(p.precipMm) && Number(p.precipMm) === 0).map((p) => Number(p.score));\r\n  if (wet.length >= 5 && dry.length >= 5 && mean(wet) - mean(dry) >= 0.5) {\r\n    patterns.push(`On rainy days your pain is about ${round(mean(wet) - mean(dry), 1)} points higher.`);\r\n  }\r\n\r\n  // ---------- heads-ups (never suggest anything outside the prescription) ----------\r\n  const nextDoseAt = new Date(next);\r\n  const headsUps = [];\r\n  const backAt = prediction ? new Date(prediction.painLikelyBackAt) : null;\r\n  if (maxReached) {\r\n    headsUps.push(`You've reached today's maximum (${maxMg} mg). Your next dose is allowed at ${clock(nextDoseAt)}.`);\r\n  }\r\n  if (backAt && backAt > NOW && backAt - NOW <= 90 * 60000) {\r\n    headsUps.push(`Pain likely back around ${clock(backAt)}. Your next dose is allowed ${doseAllowedNow ? \"now\" : \"at \" + clock(nextDoseAt)}.`);\r\n  }\r\n  const physio = calendar.find((e) => /physio/i.test(e.title || \"\") && new Date(e.start) > NOW && new Date(e.start) - NOW <= 3 * H);\r\n  if (physio) {\r\n    headsUps.push(`Physio at ${clock(new Date(physio.start))} (from your calendar). Pain may come back sooner afterwards. ` +\r\n      `Your next dose is allowed ${doseAllowedNow ? \"now\" : \"at \" + clock(nextDoseAt)}.`);\r\n  }\r\n\r\n  // ---------- output (docs/API.md) ----------\r\n  const last24h = (t) => NOW - new Date(t) <= 24 * H;\r\n  const painNow = painLog.length ? painLog[painLog.length - 1] : null;\r\n  const status = {\r\n    nextDoseAt: localIso(nextDoseAt),\r\n    doseAllowedNow,\r\n    mgUsed24h,\r\n    mgMax24h: maxMg,\r\n    painLikelyBackAt: prediction ? prediction.painLikelyBackAt : null,\r\n  };\r\n  return {\r\n    patientId,\r\n    patient: { name: rx.name, goal, drug: rx.drug, doseMg, minIntervalH: intervalH, maxMg24h: maxMg },\r\n    now: localIso(NOW),\r\n    painNow: painNow ? { score: Number(painNow.score), at: localIso(new Date(painNow.time)) } : null,\r\n    ...status,\r\n    maxReached,\r\n    reliefHours: prediction ? prediction.predictedHours : reliefHours !== null ? round(reliefHours, 1) : null,\r\n    chart: painLog.filter((p) => last24h(p.time)).map((p) => ({ time: localIso(new Date(p.time)), score: Number(p.score) })),\r\n    doses: asNeeded.filter((d) => last24h(d.time)).map((d) => localIso(new Date(d.time))),\r\n    walks: walkRows.filter((w) => last24h(w.time)).map((w) => ({\r\n      time: localIso(new Date(w.time)), km: isNum(w.km) ? Number(w.km) : null, minutes: Number(w.minutes) })),\r\n    patterns,\r\n    headsUps,\r\n    model: {\r\n      type: \"personalized ridge regression\",\r\n      personalOffsetMin: Math.round((Number(model.offsetHours) || 0) * 60),\r\n      dosesLearnedFrom: Number(model.dosesLearned) || 0,\r\n    },\r\n    status,\r\n    prediction,\r\n  };\r\n}\r\n\r\n// ---------- helpers ----------\r\nfunction weatherAt(api, time) {\r\n  const h = api && api.hourly;\r\n  if (!h || !h.time) return {};\r\n  const idx = (t) => h.time.findIndex((x) => Math.abs(new Date(x + \"Z\") - t) < 30 * 60000);\r\n  const i = idx(time.getTime()), j = idx(time.getTime() - 6 * 3600000);\r\n  if (i < 0) return {};\r\n  return {\r\n    pressureNow: h.pressure_msl[i],\r\n    pressure6hAgo: j >= 0 ? h.pressure_msl[j] : null,\r\n    tempC: h.temperature_2m[i],\r\n    precipMm: h.precipitation[i],\r\n  };\r\n}\r\nfunction localIso(d) {\r\n  const parts = Object.fromEntries(new Intl.DateTimeFormat(\"en-CA\", {\r\n    timeZone: TZ, year: \"numeric\", month: \"2-digit\", day: \"2-digit\", hour: \"2-digit\", minute: \"2-digit\",\r\n    second: \"2-digit\", hourCycle: \"h23\", timeZoneName: \"longOffset\",\r\n  }).formatToParts(d).map((p) => [p.type, p.value]));\r\n  const offset = parts.timeZoneName.replace(\"GMT\", \"\") || \"+00:00\";\r\n  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${offset}`;\r\n}\r\nfunction clock(d) {\r\n  return d.toLocaleTimeString(\"en-US\", { timeZone: TZ, hour: \"numeric\", minute: \"2-digit\" });\r\n}\r\nfunction median(a) { const s = [...a].sort((x, y) => x - y); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }\r\nfunction mean(a) { return a.reduce((s, x) => s + x, 0) / a.length; }\r\nfunction round(x, n) { const k = 10 ** n; return Math.round(x * k) / k; }\r\n\r\n\n// ---------- run ----------\nconst input = $('Check request').first().json;\nconst rows = (node) => $(node).all().map((i) => i.json).filter((r) => r && Object.keys(r).length > 0);\nlet weatherApi = null;\ntry { weatherApi = $('Get weather (Open-Meteo)').first().json; } catch (e) { weatherApi = null; }\n\nconst result = checkRulesAndPredict({\n  patientId: input.patientId || 'P001',\n  now: input.now || null,            // demo mode: pass a \"pretend now\" ISO time\n  weights: WEIGHTS,\n  prescription: rows('Get prescription'),\n  doses: rows('Get doses'),\n  pain: rows('Get pain_log'),\n  meals: rows('Get meals'),\n  walks: rows('Get walks'),\n  schedule: rows('Get schedule'),\n  patientModel: rows('Get patient_model'),\n  weatherApi,\n});\nreturn [{ json: result }];\n"
+      },
+      "name": "Compute status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3300,
+        300
+      ],
+      "notes": "Prescription rules + Ridge prediction + personal offset + patterns",
+      "notesInFlow": true
+    },
+    {
+      "id": "0fff6f23-3d72-fe11-a1e4-d1e9e8eeb936",
+      "parameters": {
+        "jsCode": "// Reply to the app: { ok, message, warning, status } (docs/API.md). Never suggests a dose outside the prescription.\nconst c = $('Check request').first().json;\nconst s = $('Compute status').first().json;\nconst H = 3600000;\nconst clock = (t) => new Date(t).toLocaleTimeString('en-US', { timeZone: 'America/Vancouver', hour: 'numeric', minute: '2-digit' });\nconst SAFETY = \"Feeling very drowsy or confused? Don't take more. Call 811 or your care team.\";\nconst next = s.doseAllowedNow ? 'A dose is allowed now.' : 'Your next dose is allowed at ' + clock(s.nextDoseAt) + '.';\nlet message, warning = null;\n\nif (c.type === 'pain') {\n  message = 'Logged pain ' + c.body.score + '/10. ' + next;\n  if (Number(c.body.score) >= 9) warning = 'If pain is severe, new, or comes with other symptoms, contact your care team or call 811.';\n} else if (c.type === 'dose') {\n  // check the dose just saved against the as-needed doses before it\n  const t = new Date(c.time).getTime();\n  const before = $('Get doses').all().map((i) => i.json)\n    .filter((d) => String(d.patientId) === c.patientId && (!d.kind || d.kind === 'as-needed'))\n    .map((d) => new Date(d.time).getTime()).filter((x) => x < t - 1000).sort((a, b) => a - b);\n  const last = before.length ? before[before.length - 1] : null;\n  const tooEarly = last !== null && t - last < s.patient.minIntervalH * H;\n  const overMax = s.mgUsed24h > s.mgMax24h;\n  message = 'Dose logged (' + s.patient.doseMg + ' mg). ' +\n    (s.painLikelyBackAt ? 'Pain likely back around ' + clock(s.painLikelyBackAt) + '. ' : '') + next;\n  if (tooEarly || overMax) {\n    warning = (tooEarly ? 'This dose was earlier than your prescription allows (every ' + s.patient.minIntervalH + ' h). ' : '') +\n      (overMax ? 'You are over your 24 h maximum (' + s.mgMax24h + ' mg). ' : '') + SAFETY;\n  }\n} else if (c.type === 'meal') {\n  message = 'Meal logged. ' + next;\n} else {\n  const km = c.body.km === null || c.body.km === undefined ? '' : Number(c.body.km).toFixed(1) + ' km, ';\n  message = 'Walk logged (' + km + Math.round(c.body.minutes) + ' min). ' + next;\n}\nreturn [{ json: { ok: true, message, warning, status: s.status } }];"
+      },
+      "name": "Build reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "notes": "message + warning (too early / over 24 h max)",
+      "notesInFlow": true,
+      "position": [
+        3520,
+        300
+      ]
+    },
+    {
+      "id": "bf54085b-470e-9d39-2fc6-28b60c730479",
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {}
+      },
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3740,
+        300
+      ]
+    },
+    {
+      "id": "8dc62f15-cf19-26f5-7832-1a184c6caed2",
+      "parameters": {
+        "content": "## PainPal · B4 · POST /log\nSaves pain / dose / meal / walk from the app, then re-checks prescription rules and the prediction, and replies `{ ok, message, warning, status }` (docs/API.md).\n\n**Owner:** Person B · built by n8n/build.js\n**Activate** the workflow so the app can use `/webhook/log`. CORS: Vercel app + localhost.",
+        "width": 520,
+        "height": 240
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check request": {
+      "main": [
+        [
+          {
+            "node": "Valid request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid request?": {
+      "main": [
+        [
+          {
+            "node": "Type?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: bad request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Type?": {
+      "main": [
+        [
+          {
+            "node": "Pain: weather now",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Dose: get prescription",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Meal row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Walk row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pain: weather now": {
+      "main": [
+        [
+          {
+            "node": "Pain row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pain row": {
+      "main": [
+        [
+          {
+            "node": "Insert pain_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dose: get prescription": {
+      "main": [
+        [
+          {
+            "node": "Dose row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dose row": {
+      "main": [
+        [
+          {
+            "node": "Insert doses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meal row": {
+      "main": [
+        [
+          {
+            "node": "Insert meals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walk row": {
+      "main": [
+        [
+          {
+            "node": "Insert walks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert pain_log": {
+      "main": [
+        [
+          {
+            "node": "Get prescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert doses": {
+      "main": [
+        [
+          {
+            "node": "Get prescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert meals": {
+      "main": [
+        [
+          {
+            "node": "Get prescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert walks": {
+      "main": [
+        [
+          {
+            "node": "Get prescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get prescription": {
+      "main": [
+        [
+          {
+            "node": "Get doses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get doses": {
+      "main": [
+        [
+          {
+            "node": "Get pain_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get pain_log": {
+      "main": [
+        [
+          {
+            "node": "Get meals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get meals": {
+      "main": [
+        [
+          {
+            "node": "Get walks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get walks": {
+      "main": [
+        [
+          {
+            "node": "Get schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get schedule": {
+      "main": [
+        [
+          {
+            "node": "Get patient_model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get patient_model": {
+      "main": [
+        [
+          {
+            "node": "Get weather (Open-Meteo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get weather (Open-Meteo)": {
+      "main": [
+        [
+          {
+            "node": "Compute status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute status": {
+      "main": [
+        [
+          {
+            "node": "Build reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build reply": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -59,13 +59,14 @@ const weights = JSON.parse(fs.readFileSync(path.join(ROOT, "ml", "weights.json")
 const TABLES = ["prescription", "doses", "pain_log", "meals", "walks", "schedule", "patient_model"];
 const tableNode = (t) => `Get ${t}`;
 
-const jsCode = `// Built by n8n/build.js from ml/predict.js + n8n/code/check-rules-and-predict.js. Edit those, then rebuild.
+// The "Compute status" Code node; inputExpr says where patientId / now come from (trigger, webhook body, query).
+const computeCode = (inputExpr) => `// Built by n8n/build.js from ml/predict.js + n8n/code/check-rules-and-predict.js. Edit those, then rebuild.
 // Model weights from ml/weights.json (${weights.trainedOn}).
 const WEIGHTS = ${JSON.stringify(weights)};
 ${helpers}
 ${logic}
 // ---------- run ----------
-const input = $('When called by another workflow').first().json;
+const input = ${inputExpr};
 const rows = (node) => $(node).all().map((i) => i.json).filter((r) => r && Object.keys(r).length > 0);
 let weatherApi = null;
 try { weatherApi = $('Get weather (Open-Meteo)').first().json; } catch (e) { weatherApi = null; }
@@ -79,19 +80,17 @@ ${TABLES.map((t) => `  ${{ pain_log: "pain", patient_model: "patientModel" }[t] 
 });
 return [{ json: result }];
 `;
+const jsCode = computeCode("$('When called by another workflow').first().json");
 
 let x = 0;
 const pos = () => [(x += 220) - 220, 300];
 const id = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
-const nodes = [
-  {
-    parameters: { inputSource: "passthrough" },
-    name: "When called by another workflow", type: "n8n-nodes-base.executeWorkflowTrigger", typeVersion: 1.1, position: pos(),
-  },
+// Get every table + weather + Compute status (shared by B3, B4, B6)
+const statusNodes = (inputExpr, at) => [
   ...TABLES.map((t) => ({
     parameters: { resource: "row", operation: "get", dataTableId: { __rl: true, mode: "name", value: t }, returnAll: true },
-    name: tableNode(t), type: "n8n-nodes-base.dataTable", typeVersion: 1, position: pos(),
+    name: tableNode(t), type: "n8n-nodes-base.dataTable", typeVersion: 1, position: at(),
     executeOnce: true, alwaysOutputData: true,
   })),
   {
@@ -105,15 +104,23 @@ const nodes = [
       ] },
       options: {},
     },
-    name: "Get weather (Open-Meteo)", type: "n8n-nodes-base.httpRequest", typeVersion: 4.2, position: pos(),
+    name: "Get weather (Open-Meteo)", type: "n8n-nodes-base.httpRequest", typeVersion: 4.2, position: at(),
     executeOnce: true, alwaysOutputData: true, onError: "continueRegularOutput",
     notes: "If weather fails, prediction still works (weather counts as average)", notesInFlow: true,
   },
   {
-    parameters: { jsCode },
-    name: "Compute status", type: "n8n-nodes-base.code", typeVersion: 2, position: pos(),
+    parameters: { jsCode: computeCode(inputExpr) },
+    name: "Compute status", type: "n8n-nodes-base.code", typeVersion: 2, position: at(),
     notes: "Prescription rules + Ridge prediction + personal offset + patterns", notesInFlow: true,
   },
+];
+
+const nodes = [
+  {
+    parameters: { inputSource: "passthrough" },
+    name: "When called by another workflow", type: "n8n-nodes-base.executeWorkflowTrigger", typeVersion: 1.1, position: pos(),
+  },
+  ...statusNodes("$('When called by another workflow').first().json", pos),
 ];
 
 const ifNode = (name, field, position) => ({
@@ -267,6 +274,192 @@ const setupFile = path.join(__dirname, "PainPal-Setup.json");
 fs.writeFileSync(setupFile, JSON.stringify({ name: "PainPal · Setup (run once)", nodes: sNodes, connections: sConn,
   settings: { executionOrder: "v1" } }, null, 2) + "\n");
 console.log(`Setup:    ${path.relative(ROOT, setupFile)} (${sNodes.length} nodes)`);
+
+// ---------- B4 (POST /log) and B6 (GET /dashboard) ----------
+const ORIGINS = "https://pain-tracker-rosy.vercel.app,http://localhost:5173";
+const uuid = (s) => { const h = require("crypto").createHash("md5").update(s).digest("hex");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`; };
+const LOCAL_ISO = `const localIso = (d) => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Vancouver',
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+  timeZoneName: 'longOffset' }).formatToParts(d).map((x) => [x.type, x.value]));
+  return \`\${p.year}-\${p.month}-\${p.day}T\${p.hour}:\${p.minute}:\${p.second}\${p.timeZoneName.replace('GMT', '') || '+00:00'}\`; };`;
+
+const webhook = (name, method, pathName) => ({
+  parameters: { httpMethod: method, path: pathName, responseMode: "responseNode", options: { allowedOrigins: ORIGINS } },
+  name, type: "n8n-nodes-base.webhook", typeVersion: 2, webhookId: uuid(`painpal-${pathName}`),
+});
+const respond = (name, extra = {}) => ({
+  parameters: { respondWith: "firstIncomingItem", options: {}, ...extra },
+  name, type: "n8n-nodes-base.respondToWebhook", typeVersion: 1.1,
+});
+const code = (name, jsCode, notes) => ({
+  parameters: { jsCode }, name, type: "n8n-nodes-base.code", typeVersion: 2, ...(notes ? { notes, notesInFlow: true } : {}),
+});
+const insert = (t) => ({
+  parameters: { resource: "row", operation: "insert", dataTableId: { __rl: true, mode: "name", value: t },
+    columns: { mappingMode: "autoMapInputData", value: {}, matchingColumns: [], schema: [] }, options: {} },
+  name: `Insert ${t}`, type: "n8n-nodes-base.dataTable", typeVersion: 1,
+});
+const sticky = (content, position, width = 480, height = 220) => ({
+  parameters: { content, width, height }, name: "Sticky Note", type: "n8n-nodes-base.stickyNote", typeVersion: 1, position,
+});
+const place = (node, position) => ({ ...node, position });
+const wire = (pairs) => {
+  const c = {};
+  for (const [from, to, output = 0] of pairs) {
+    c[from] = c[from] || { main: [] };
+    while (c[from].main.length <= output) c[from].main.push([]);
+    c[from].main[output].push({ node: to, type: "main", index: 0 });
+  }
+  return c;
+};
+const finish = (prefix, nodes) => nodes.map((n, i) => ({ id: uuid(`${prefix}-${i}-${n.name}`), ...n }));
+
+// --- B4 code nodes ---
+const CHECK_REQUEST = `// Validate the app's request (docs/API.md). Bad requests get a 400 with a clear message.
+${LOCAL_ISO}
+const body = $input.first().json.body || {};
+const types = ['pain', 'dose', 'meal', 'walk'];
+const isNum = (x) => x !== null && x !== undefined && x !== '' && Number.isFinite(Number(x));
+let error = null;
+if (!types.includes(body.type)) error = 'type must be one of: pain, dose, meal, walk';
+else if (body.type === 'pain' && !(isNum(body.score) && Number.isInteger(Number(body.score)) && body.score >= 0 && body.score <= 10))
+  error = 'score must be a whole number from 0 to 10';
+else if (body.type === 'walk' && !(isNum(body.minutes) && body.minutes > 0 && body.minutes <= 600))
+  error = 'minutes must be a number from 1 to 600';
+else if (body.type === 'walk' && body.km !== null && body.km !== undefined && !(isNum(body.km) && body.km >= 0 && body.km < 100))
+  error = 'km must be a number, or null for manual walks';
+return [{ json: { valid: !error, error, type: body.type, patientId: String(body.patientId || 'P001'), time: localIso(new Date()), body } }];`;
+
+const ROW = {
+  pain: `// Pain log row + the weather right now (Open-Meteo). Weather may be missing; the log is still saved.
+const c = $('Check request').first().json;
+const w = ($input.first().json || {}).current || {};
+return [{ json: { patientId: c.patientId, time: c.time, score: Number(c.body.score), note: String(c.body.note || '').slice(0, 200),
+  pressureHpa: w.pressure_msl ?? null, tempC: w.temperature_2m ?? null, precipMm: w.precipitation ?? null } }];`,
+  dose: `// As-needed dose: the amount always comes from the prescription, never from the app.
+const c = $('Check request').first().json;
+const rx = $input.all().map((i) => i.json).find((r) => String(r.patientId) === c.patientId);
+if (!rx) throw new Error('No prescription for patient ' + c.patientId);
+return [{ json: { patientId: c.patientId, time: c.time, mg: Number(rx.doseMg), drug: rx.drug, kind: 'as-needed' } }];`,
+  meal: `const c = $('Check request').first().json;
+return [{ json: { patientId: c.patientId, time: c.time, meal: String(c.body.meal || 'meal').slice(0, 40) } }];`,
+  walk: `// Walk: GPS walks have km; manual walks send km = null (stored empty). Never coordinates.
+const c = $('Check request').first().json;
+const km = c.body.km === null || c.body.km === undefined || c.body.km === '' ? null : Math.round(Number(c.body.km) * 100) / 100;
+return [{ json: { patientId: c.patientId, time: c.time, km, minutes: Math.round(Number(c.body.minutes)),
+  source: c.body.source === 'auto' ? 'auto' : 'manual' } }];`,
+};
+
+const BUILD_REPLY = `// Reply to the app: { ok, message, warning, status } (docs/API.md). Never suggests a dose outside the prescription.
+const c = $('Check request').first().json;
+const s = $('Compute status').first().json;
+const H = 3600000;
+const clock = (t) => new Date(t).toLocaleTimeString('en-US', { timeZone: 'America/Vancouver', hour: 'numeric', minute: '2-digit' });
+const SAFETY = "Feeling very drowsy or confused? Don't take more. Call 811 or your care team.";
+const next = s.doseAllowedNow ? 'A dose is allowed now.' : 'Your next dose is allowed at ' + clock(s.nextDoseAt) + '.';
+let message, warning = null;
+
+if (c.type === 'pain') {
+  message = 'Logged pain ' + c.body.score + '/10. ' + next;
+  if (Number(c.body.score) >= 9) warning = 'If pain is severe, new, or comes with other symptoms, contact your care team or call 811.';
+} else if (c.type === 'dose') {
+  // check the dose just saved against the as-needed doses before it
+  const t = new Date(c.time).getTime();
+  const before = $('Get doses').all().map((i) => i.json)
+    .filter((d) => String(d.patientId) === c.patientId && (!d.kind || d.kind === 'as-needed'))
+    .map((d) => new Date(d.time).getTime()).filter((x) => x < t - 1000).sort((a, b) => a - b);
+  const last = before.length ? before[before.length - 1] : null;
+  const tooEarly = last !== null && t - last < s.patient.minIntervalH * H;
+  const overMax = s.mgUsed24h > s.mgMax24h;
+  message = 'Dose logged (' + s.patient.doseMg + ' mg). ' +
+    (s.painLikelyBackAt ? 'Pain likely back around ' + clock(s.painLikelyBackAt) + '. ' : '') + next;
+  if (tooEarly || overMax) {
+    warning = (tooEarly ? 'This dose was earlier than your prescription allows (every ' + s.patient.minIntervalH + ' h). ' : '') +
+      (overMax ? 'You are over your 24 h maximum (' + s.mgMax24h + ' mg). ' : '') + SAFETY;
+  }
+} else if (c.type === 'meal') {
+  message = 'Meal logged. ' + next;
+} else {
+  const km = c.body.km === null || c.body.km === undefined ? '' : Number(c.body.km).toFixed(1) + ' km, ';
+  message = 'Walk logged (' + km + Math.round(c.body.minutes) + ' min). ' + next;
+}
+return [{ json: { ok: true, message, warning, status: s.status } }];`;
+
+const switchRule = (type) => ({
+  conditions: {
+    options: { caseSensitive: true, leftValue: "", typeValidation: "strict", version: 2 },
+    conditions: [{ leftValue: "={{ $json.type }}", rightValue: type, operator: { type: "string", operation: "equals" } }],
+    combinator: "and",
+  },
+  renameOutput: true, outputKey: type,
+});
+
+{
+  const X = (i) => i * 220;
+  const b4 = [
+    place(webhook("Webhook", "POST", "log"), [X(0), 300]),
+    place(code("Check request", CHECK_REQUEST), [X(1), 300]),
+    place(ifNode("Valid request?", "valid", null), [X(2), 300]),
+    place(respond("Respond: bad request", {
+      respondWith: "json", responseBody: "={{ JSON.stringify({ ok: false, message: $json.error }) }}", options: { responseCode: 400 },
+    }), [X(3), 520]),
+    place({ parameters: { rules: { values: ["pain", "dose", "meal", "walk"].map(switchRule) }, options: {} },
+      name: "Type?", type: "n8n-nodes-base.switch", typeVersion: 3.2 }, [X(3), 300]),
+    place({ parameters: { url: "https://api.open-meteo.com/v1/forecast", sendQuery: true, queryParameters: { parameters: [
+      { name: "latitude", value: "49.26" }, { name: "longitude", value: "-123.25" },
+      { name: "current", value: "temperature_2m,pressure_msl,precipitation" }] }, options: {} },
+      name: "Pain: weather now", type: "n8n-nodes-base.httpRequest", typeVersion: 4.2,
+      alwaysOutputData: true, onError: "continueRegularOutput" }, [X(4), 0]),
+    place(code("Pain row", ROW.pain), [X(5), 0]),
+    place({ parameters: { resource: "row", operation: "get", dataTableId: { __rl: true, mode: "name", value: "prescription" }, returnAll: true },
+      name: "Dose: get prescription", type: "n8n-nodes-base.dataTable", typeVersion: 1, executeOnce: true }, [X(4), 200]),
+    place(code("Dose row", ROW.dose, "mg from the prescription"), [X(5), 200]),
+    place(code("Meal row", ROW.meal), [X(5), 400]),
+    place(code("Walk row", ROW.walk, "km may be null (manual walk)"), [X(5), 600]),
+    place(insert("pain_log"), [X(6), 0]),
+    place(insert("doses"), [X(6), 200]),
+    place(insert("meals"), [X(6), 400]),
+    place(insert("walks"), [X(6), 600]),
+  ];
+  let sx4 = X(7);
+  b4.push(...statusNodes("$('Check request').first().json", () => [(sx4 += 220) - 220, 300]));
+  b4.push(place(code("Build reply", BUILD_REPLY, "message + warning (too early / over 24 h max)"), [sx4, 300]));
+  b4.push(place(respond("Respond"), [sx4 + 220, 300]));
+  b4.push(sticky("## PainPal · B4 · POST /log\nSaves pain / dose / meal / walk from the app, then re-checks prescription rules " +
+    "and the prediction, and replies `{ ok, message, warning, status }` (docs/API.md).\n\n**Owner:** Person B · built by n8n/build.js\n" +
+    "**Activate** the workflow so the app can use `/webhook/log`. CORS: Vercel app + localhost.", [-40, -300], 520, 240));
+  const chainStart = tableNode(TABLES[0]);
+  const statusChain = [...TABLES.map(tableNode), "Get weather (Open-Meteo)", "Compute status", "Build reply", "Respond"];
+  const b4Conn = wire([
+    ["Webhook", "Check request"], ["Check request", "Valid request?"],
+    ["Valid request?", "Type?", 0], ["Valid request?", "Respond: bad request", 1],
+    ["Type?", "Pain: weather now", 0], ["Type?", "Dose: get prescription", 1], ["Type?", "Meal row", 2], ["Type?", "Walk row", 3],
+    ["Pain: weather now", "Pain row"], ["Pain row", "Insert pain_log"],
+    ["Dose: get prescription", "Dose row"], ["Dose row", "Insert doses"],
+    ["Meal row", "Insert meals"], ["Walk row", "Insert walks"],
+    ...["pain_log", "doses", "meals", "walks"].map((t) => [`Insert ${t}`, chainStart]),
+    ...statusChain.slice(0, -1).map((n, i) => [n, statusChain[i + 1]]),
+  ]);
+  fs.writeFileSync(path.join(__dirname, "PainPal-B4-log.json"), JSON.stringify({
+    name: "PainPal · B4 · POST /log", nodes: finish("b4", b4), connections: b4Conn, settings: { executionOrder: "v1" },
+  }, null, 2) + "\n");
+
+  let sx6 = 220;
+  const b6 = [place(webhook("Webhook", "GET", "dashboard"), [0, 300])];
+  b6.push(...statusNodes("({ patientId: ($('Webhook').first().json.query || {}).patientId, now: ($('Webhook').first().json.query || {}).now })",
+    () => [(sx6 += 220) - 220, 300]));
+  b6.push(place(respond("Respond"), [sx6, 300]));
+  b6.push(sticky("## PainPal · B6 · GET /dashboard\nReads the tables, applies prescription rules, predicts when pain is likely back, " +
+    "finds patterns and heads-ups. Replies with the dashboard JSON (docs/API.md).\n\n`?patientId=P001` (optional `&now=ISO` for demo mode)\n\n" +
+    "**Owner:** Person B · built by n8n/build.js · **Activate** to use `/webhook/dashboard`.", [-40, -300], 520, 240));
+  const b6Chain = ["Webhook", ...TABLES.map(tableNode), "Get weather (Open-Meteo)", "Compute status", "Respond"];
+  fs.writeFileSync(path.join(__dirname, "PainPal-B6-dashboard.json"), JSON.stringify({
+    name: "PainPal · B6 · GET /dashboard", nodes: finish("b6", b6),
+    connections: wire(b6Chain.slice(0, -1).map((n, i) => [n, b6Chain[i + 1]])), settings: { executionOrder: "v1" },
+  }, null, 2) + "\n");
+  console.log(`B4/B6:    n8n/PainPal-B4-log.json (${b4.length} nodes), n8n/PainPal-B6-dashboard.json (${b6.length} nodes)`);
+}
 
 console.log(`Seed CSVs for ${PATIENT} in n8n/seed/:`, Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(", "));
 console.log(`Workflow: ${path.relative(ROOT, wfFile)} (${nodes.length} nodes, Code node ${jsCode.length} chars)`);
