@@ -91,11 +91,18 @@ log a dose → later log pain above goal → the reply says what it learned → 
 ## B6: /dashboard
 Webhook GET `/dashboard?patientId=P001` (optional `&now=ISO` for demo mode) → Get tables → weather → **Compute status** → Respond with the dashboard JSON.
 
-## B7: Heads-ups
-Schedule (every 30 min) → for each patient: Check rules & predict →
-- **IF** `painLikelyBackAt` within 30 min → Gmail "Pain likely back around 3:00 PM. Next dose allowed 2:45 PM."
-- **IF** no pain log in 4 h (awake hours) → Gmail check-in with an n8n Form link ("How's your pain right now?"), which saves to `pain_log`
-- Add a **demo mode**: a Manual Trigger + a "pretend now = X" field, so alerts can fire on camera.
+## B7: Heads-ups (`PainPal-B7-heads-ups.json` + `PainPal-B7-check-in-form.json`)
+Import both from URL (`…/n8n/<file>`), then: ✏️ email in the **Settings** node · pick a Gmail credential in **Email heads-up** · **Publish** both.
+
+Schedule (every 30 min) **or** Manual "Demo: send heads-ups now" → Settings → Get tables → weather → **Compute status** → Get `alerts` →
+**Code: Decide heads-ups** → Gmail (one email per heads-up) → Insert `alerts` (each heads-up is sent once):
+- pain likely back above goal within 30 min → "Heads-up: pain likely back around 11:22 PM" + when the next dose is allowed
+- physio on the calendar (`schedule`) within 3 h
+- no pain log for 4 h between 8 AM and 9 PM → check-in email with the **form** link `/form/painpal-checkin`
+- the form posts to **/log**, so the answer is saved, rule-checked and used for learning exactly like the app
+- **demo mode** pretends it's 20 min before pain is likely back, so the email fires on camera (and ignores "already sent")
+
+Every email ends with the 811 safety line and "Demo with synthetic data. Not medical advice." Tests: `node n8n/test-b7-b9.js`.
 
 ## B8: Weekly summary (human in the loop)
 Schedule (weekly) + Manual Trigger for the demo →
@@ -105,8 +112,10 @@ Schedule (weekly) + Manual Trigger for the demo →
 4. **Gmail: send and wait for approval** to the *patient*: "Share this summary with your prescriber?"
 5. Approved → Gmail to prescriber. Declined → log it.
 
-## B9: Error workflow
-Error Trigger → Gmail to the team with the workflow name and error. Set it as the error workflow in each workflow's settings.
+## B9: Error workflow (`PainPal-B9-error-alerts.json`)
+Error Trigger → Settings (✏️ email) → Gmail to the team: workflow name, failed node, error, link to the execution.
+Publish it, then in each PainPal workflow: **⋯ → Settings → Error workflow → PainPal · B9 · Error alerts** → Save.
 
 ## Export
-For every workflow: ⋯ → Download → save to `n8n/` → commit. Do this after each milestone.
+The repo is the source: `node n8n/build.js` writes every workflow in `n8n/` from `ml/` + `n8n/code/`, and they are imported by URL.
+If you change a workflow in the n8n editor, also download it (⋯ → Download) into `n8n/exported/` so the repo matches what ran.

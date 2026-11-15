@@ -1,0 +1,95 @@
+{
+  "name": "PainPal · B9 · Error alerts",
+  "nodes": [
+    {
+      "id": "009fc9b7-56fc-f51a-5eba-6a26641436fe",
+      "parameters": {},
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "id": "842d60f5-edb7-3c79-9664-b8b6ea2156d2",
+      "parameters": {
+        "jsCode": "// ✏️ ONE-TIME SETUP: put the email address that should receive PainPal emails here.\n// (Edit it in n8n only. Don't commit a real address to GitHub.)\nconst SEND_TO = 'you@example.com';\nif (SEND_TO === 'you@example.com') throw new Error('Open the \"Settings\" node and set SEND_TO to your email address');\nconst e = $input.first().json;\nconst wf = (e.workflow && e.workflow.name) || 'a PainPal workflow';\nconst ex = e.execution || {};\nconst msg = (ex.error && ex.error.message) || 'unknown error';\nconst esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));\nreturn [{ json: { sendTo: SEND_TO, subject: 'PainPal error in ' + wf,\n  html: '<p><b>' + esc(wf) + '</b> failed' + (ex.lastNodeExecuted ? ' at node <b>' + esc(ex.lastNodeExecuted) + '</b>' : '') + '.</p>' +\n    '<p>' + esc(msg) + '</p>' + (ex.url ? '<p><a href=\"' + ex.url + '\">Open the execution</a></p>' : '') } }];"
+      },
+      "name": "Settings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "notes": "✏️ set your email here once",
+      "notesInFlow": true,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "id": "5440cb50-1e90-ebd5-1b26-281e68deee23",
+      "parameters": {
+        "sendTo": "={{ $json.sendTo }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "name": "Email the team",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "webhookId": "34e92313-9e8a-2ff6-9bcb-3c43ca88679a",
+      "notes": "Pick your Gmail credential once",
+      "notesInFlow": true,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "id": "947fa435-b373-26b7-d0c6-007f85b12e03",
+      "parameters": {
+        "content": "## PainPal · B9 · Error alerts\nEmails the team when any PainPal workflow fails.\n\n**Setup:** ✏️ email in *Settings* · Gmail credential · Publish · then in each PainPal workflow: **⋯ → Settings → Error workflow → PainPal · B9 · Error alerts**.",
+        "width": 480,
+        "height": 200
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -60
+      ]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Email the team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

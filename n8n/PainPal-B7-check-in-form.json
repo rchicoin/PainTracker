@@ -1,0 +1,95 @@
+{
+  "name": "PainPal · B7 · Check-in form",
+  "nodes": [
+    {
+      "id": "c53ce6e5-a378-b184-95c4-63e1b8b5d11c",
+      "parameters": {
+        "path": "painpal-checkin",
+        "formTitle": "How's your pain right now?",
+        "formDescription": "PainPal check-in. Demo with synthetic data. Not medical advice.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Pain",
+              "fieldType": "number",
+              "requiredField": true,
+              "placeholder": "0 = no pain, 10 = worst"
+            },
+            {
+              "fieldLabel": "Note",
+              "fieldType": "textarea",
+              "placeholder": "Optional, e.g. after stairs"
+            }
+          ]
+        },
+        "options": {
+          "respondWithOptions": {
+            "values": {
+              "respondWith": "text",
+              "formSubmittedText": "Thanks! PainPal saved your check-in. Feeling very drowsy or confused? Don't take more. Call 811 or your care team."
+            }
+          }
+        }
+      },
+      "name": "Check-in form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "webhookId": "0ca39c1d-52c0-deee-4ab1-47b990012b9e",
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "id": "f0f91287-c853-9732-1c90-7c4341f651b6",
+      "parameters": {
+        "method": "POST",
+        "url": "https://team17.app.n8n.cloud/webhook/log",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ patientId: 'P001', type: 'pain', score: Math.max(0, Math.min(10, Math.round(Number($json.Pain)))), note: ($json.Note || 'check-in form').slice(0, 200) }) }}",
+        "options": {}
+      },
+      "name": "Save via /log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "notes": "Same path as the app: rules + learning apply",
+      "notesInFlow": true,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "id": "93f20cf7-87db-5721-8d0f-2d683a8cd9c9",
+      "parameters": {
+        "content": "## PainPal · B7 · Check-in form\nThe check-in email links here (`/form/painpal-checkin`). The answer goes through **/log**, so it is saved, checked against the prescription and used for learning, exactly like the app.\n\n**Publish** this workflow.",
+        "width": 480,
+        "height": 180
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -60
+      ]
+    }
+  ],
+  "connections": {
+    "Check-in form": {
+      "main": [
+        [
+          {
+            "node": "Save via /log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
