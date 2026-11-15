@@ -73,6 +73,13 @@ const FAKE_DASHBOARD = {
   ],
   headsUps: ['Pain likely back around 1:40 PM. Your next dose is allowed at 11:30 AM.'],
   model: { type: 'personalized ridge regression', personalOffsetMin: -22, dosesLearnedFrom: 14 },
+  // Round 2 (R2), proposed in docs/API.md
+  why: [
+    { label: 'Evening (6–10 PM)', minutes: -48 },
+    { label: 'Physio soon after your dose', minutes: -32 },
+    { label: 'Walked 1.2 km before the dose', minutes: -20 },
+    { label: 'Your personal pattern', minutes: 14 },
+  ],
 }
 
 const fakeDelay = () => new Promise((r) => setTimeout(r, 400))

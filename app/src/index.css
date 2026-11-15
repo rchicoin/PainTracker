@@ -353,3 +353,29 @@ button:disabled { opacity: 0.55; cursor: default; }
 .list li.is-new::after { content: ' NEW'; font-size: 0.68rem; font-weight: 700; color: var(--warn); }
 
 .toast-action { margin-top: 8px; border: 1px solid rgba(255, 255, 255, 0.4); background: none; color: #fff; border-radius: 6px; padding: 6px 10px; font-weight: 600; }
+
+/* ---------- R2: "Why" card ---------- */
+.why { background: var(--tile); border-radius: 6px; padding: 12px 12px 6px; margin-bottom: 14px; }
+.why .section-label { margin-bottom: 2px; }
+.why-sub { margin: 0 0 8px; }
+.why-list { list-style: none; margin: 0; padding: 0; }
+.why-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(70px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 0.86rem;
+}
+.why-row.is-new { background: #fff3d6; border-radius: 4px; padding: 5px 6px; margin: 0 -6px; }
+.why-track { position: relative; height: 10px; }
+.why-zero { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); opacity: 0.6; }
+.why-bar { position: absolute; top: 0; height: 10px; border-radius: 3px; }
+.why-sooner { background: #c0504d; }
+.why-later { background: var(--good); }
+.why-value { white-space: nowrap; font-weight: 600; font-size: 0.8rem; text-align: right; min-width: 92px; }
+.why-was { font-weight: 400; color: var(--warn); }
+@media (max-width: 420px) {
+  .why-row { grid-template-columns: 1fr auto; }
+  .why-track { grid-column: 1 / -1; grid-row: 2; }
+}

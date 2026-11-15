@@ -1,5 +1,6 @@
 import { formatHours, formatTime } from '../format.js'
 import PainChart from './PainChart.jsx'
+import WhyCard from './WhyCard.jsx'
 
 // The main patient card: status pill, number tiles, 24 h chart,
 // "What we've noticed" and "Heads-ups" side by side.
@@ -36,6 +37,8 @@ export default function MyStatus({ data, prev }) {
           return <Tile key={t.key + (changed ? '-changed' : '')} {...t} was={changed ? was : null} />
         })}
       </div>
+
+      <WhyCard why={data.why} before={prev?.why} />
 
       <PainChart
         now={data.now}
