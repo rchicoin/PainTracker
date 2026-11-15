@@ -129,6 +129,12 @@ function checkRulesAndPredict({ patientId, now, weights, prescription, doses, pa
       `Your next dose is allowed ${doseAllowedNow ? "now" : "at " + clock(nextDoseAt)}.`);
   }
 
+  // ---------- R2: why + upcoming ----------
+  const why = prediction ? explainPrediction(weights, prediction.features, model.offsetHours, new Date(lastDoseAt)) : [];
+  const upcoming = calendar
+    .filter((e) => /physio/i.test(e.title || "") && new Date(e.start) > NOW && new Date(e.start) - NOW <= 7 * 24 * H)
+    .map((e) => ({ time: localIso(new Date(e.start)), title: "Physio" }));
+
   // ---------- output (docs/API.md) ----------
   const last24h = (t) => NOW - new Date(t) <= 24 * H;
   const painNow = painLog.length ? painLog[painLog.length - 1] : null;
@@ -158,9 +164,43 @@ function checkRulesAndPredict({ patientId, now, weights, prescription, doses, pa
       personalOffsetMin: Math.round((Number(model.offsetHours) || 0) * 60),
       dosesLearnedFrom: Number(model.dosesLearned) || 0,
     },
+    why,
+    upcoming,
     status,
     prediction,
   };
+}
+
+// R2: what moved "pain likely back" for this dose, compared with an average dose (minutes; < 0 = sooner).
+// Ridge is linear, so each feature's effect is exactly coef * (x - mean) / scale hours. Unknown features = average = 0.
+// Labels stay the same between refreshes so the app can highlight what changed.
+function explainPrediction(weights, f, offsetHours, doseTime) {
+  const effect = (names) => names.reduce((s, name) => {
+    const i = weights.features.indexOf(name);
+    return i < 0 || !isNum(f[name]) ? s : s + weights.coef[i] * ((Number(f[name]) - weights.mean[i]) / weights.scale[i]);
+  }, 0);
+  const ago = (h) => (h >= 12 ? "12+ h" : h < 1 ? `${Math.round(h * 60)} min` : `${round(h, 1)} h`);
+  const hour = localHour(doseTime);
+  const timeLabel = hour >= 6 && hour < 12 ? "Morning (6 AM–12 PM)" : hour >= 12 && hour < 18 ? "Afternoon (12–6 PM)"
+    : hour >= 18 && hour < 22 ? "Evening (6–10 PM)" : "Night (10 PM–6 AM)";
+  const groups = [
+    [timeLabel, ["hour_sin", "hour_cos", "evening"]],
+    [isNum(f.pain_at_dose) ? `Pain was ${f.pain_at_dose}/10 at your dose` : null, ["pain_at_dose"]],
+    [f.walk_km_prev_3h > 0 ? `Walked ${round(f.walk_km_prev_3h, 1)} km before the dose` : "No walk before the dose",
+      ["walk_km_prev_3h", "walk_min_prev_3h", "steps_prev_3h"]],
+    [f.physio_next_2h ? "Physio soon after your dose" : null, ["physio_next_2h"]],
+    [isNum(f.hours_since_meal) ? `Ate ${ago(f.hours_since_meal)} before the dose` : null, ["hours_since_meal"]],
+    [isNum(f.hours_since_scheduled_med) ? `Daily medicine ${ago(f.hours_since_scheduled_med)} before` : null,
+      ["hours_since_scheduled_med"]],
+    ["Weather (pressure, rain, temperature)", ["pressure_change_6h", "temp_c", "precip_mm"]],
+  ];
+  const items = groups.filter(([label]) => label)
+    .map(([label, names]) => ({ label, minutes: Math.round(effect(names) * 60) }))
+    .filter((x) => Math.abs(x.minutes) >= 3)
+    .sort((a, b) => Math.abs(b.minutes) - Math.abs(a.minutes))
+    .slice(0, 4);
+  items.push({ label: "Your personal pattern", minutes: Math.round((isNum(offsetHours) ? Number(offsetHours) : 0) * 60) });
+  return items;
 }
 
 // ---------- helpers ----------

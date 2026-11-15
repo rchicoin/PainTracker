@@ -137,9 +137,12 @@ Response (same shape as other logs):
 }
 ```
 - `why`: what moved "pain likely back" for the last dose, compared with an average dose; `minutes` < 0 = pain back sooner.
-  Biggest effects first (up to 4), plus "Your personal pattern" (the learned offset). Empty if there's no dose yet.
+  Biggest effects first (up to 4, each at least 3 min), plus "Your personal pattern" (the learned offset, always last).
+  Empty if there's no dose yet. Exact for the Ridge model: each effect = coef × (value − average) / scale. **Built (R2-B).**
+  Labels: time of day ("Evening (6–10 PM)" etc.), "Pain was 6/10 at your dose", "Walked 1.2 km before the dose" / "No walk before the dose",
+  "Physio soon after your dose", "Ate 45 min before the dose", "Daily medicine 2.5 h before", "Weather (pressure, rain, temperature)".
 - `forecast`: expected pain from the last dose to `painLikelyBackAt` (dose → relief → back above goal). Draw it dashed.
-- `upcoming`: future physio appointments (next 7 days).
+- `upcoming`: future physio appointments (next 7 days). **Built (R2-B).**
 - `demo`: present only when the demo clock is shifted. Show "Demo time" whenever `active` is true.
 
 ### R3 · POST `/demo-clock`

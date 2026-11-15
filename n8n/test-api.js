@@ -95,7 +95,15 @@ show("bad: physio without at", postLog({ patientId: "P001", type: "physio" }));
 const out6 = { Webhook: [{ json: { query: { patientId: "P001" } } }], ...tableOutputs(), ...weatherDown };
 const dash = runCode(codeOf(b6, "Compute status"), out6, [])[0].json;
 const need = ["patient", "now", "painNow", "nextDoseAt", "doseAllowedNow", "mgUsed24h", "mgMax24h", "reliefHours",
-  "painLikelyBackAt", "chart", "doses", "walks", "patterns", "headsUps", "model"];
+  "painLikelyBackAt", "chart", "doses", "walks", "patterns", "headsUps", "model", "why", "upcoming"];
 console.log(`\nGET /dashboard -> missing API fields: ${need.filter((k) => !(k in dash)).join(", ") || "none"}`);
 console.log(`  painNow ${JSON.stringify(dash.painNow)}, mgUsed24h ${dash.mgUsed24h}/${dash.mgMax24h}, walks ${JSON.stringify(dash.walks)}`);
 console.log(`  headsUps ${JSON.stringify(dash.headsUps)}`);
+console.log(`  why ${JSON.stringify(dash.why)}`);
+console.log(`  upcoming ${JSON.stringify(dash.upcoming)}`);
+// R2: the "why" minutes + an average dose add up to the prediction (Ridge is linear; small rounding is fine)
+const W = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "ml", "weights.json"), "utf8"));
+const p = dash.prediction, shown = dash.why.reduce((s, w) => s + w.minutes, 0);
+console.log(`  why check: average ${Math.round(W.intercept * 60)} min ${shown >= 0 ? "+" : ""}${shown} = ${Math.round(W.intercept * 60) + shown} min ` +
+  `vs predicted ${Math.round(p.predictedHours * 60)} min (effects under 3 min and beyond the top 4 are left out)`);
+console.log(`  has "Physio soon after your dose": ${dash.why.some((w) => w.label === "Physio soon after your dose")}`);
