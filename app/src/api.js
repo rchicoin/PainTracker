@@ -42,7 +42,10 @@ const FAKE_DASHBOARD = {
     { time: '2026-11-15T10:45:00-08:00', score: 6 },
   ],
   doses: ['2026-11-14T13:00:00-08:00', '2026-11-14T20:00:00-08:00', '2026-11-15T08:00:00-08:00'],
-  walks: [{ time: '2026-11-14T16:30:00-08:00', km: 1.3 }],
+  walks: [
+    { time: '2026-11-14T16:30:00-08:00', km: 1.3, minutes: 20 },
+    { time: '2026-11-15T09:10:00-08:00', km: null, minutes: 25 },
+  ],
   patterns: [
     'Your relief usually lasts about 3 hours.',
     'Walks over 1 km raise your pain about 2 points within 2 hours.',
