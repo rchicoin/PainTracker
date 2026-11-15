@@ -14,7 +14,7 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "webhookId": "50582390-ce11-5a24-6b8e-25ad55f3fd61",
+      "webhookId": "94adff6b-cd56-394f-1316-1e6475a54406",
       "position": [
         0,
         300

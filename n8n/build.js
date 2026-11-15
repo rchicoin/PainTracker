@@ -277,6 +277,7 @@ console.log(`Setup:    ${path.relative(ROOT, setupFile)} (${sNodes.length} nodes
 
 // ---------- B4 (POST /log) and B6 (GET /dashboard) ----------
 const ORIGINS = "https://pain-tracker-rosy.vercel.app,http://localhost:5173";
+const WEBHOOK_VERSION = { log: 2, dashboard: 1 };
 const uuid = (s) => { const h = require("crypto").createHash("md5").update(s).digest("hex");
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`; };
 const LOCAL_ISO = `const localIso = (d) => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Vancouver',
@@ -286,7 +287,8 @@ const LOCAL_ISO = `const localIso = (d) => { const p = Object.fromEntries(new In
 
 const webhook = (name, method, pathName) => ({
   parameters: { httpMethod: method, path: pathName, responseMode: "responseNode", options: { allowedOrigins: ORIGINS } },
-  name, type: "n8n-nodes-base.webhook", typeVersion: 2, webhookId: uuid(`painpal-${pathName}`),
+  // bump WEBHOOK_VERSION if n8n reports a "conflicting URL path" from a deleted copy of the workflow
+  name, type: "n8n-nodes-base.webhook", typeVersion: 2, webhookId: uuid(`painpal-${pathName}-${WEBHOOK_VERSION[pathName] || 1}`),
 });
 const respond = (name, extra = {}) => ({
   parameters: { respondWith: "firstIncomingItem", options: {}, ...extra },
