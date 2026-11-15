@@ -13,7 +13,7 @@ Track: **n8n track** (+ overall). n8n must do the real work; the app only displa
 | **B: Brain** | `n8n/`, `ml/`, `data/` | n8n workflows, data storage, prescription rules, model training + learning |
 | Both | | Demo video, Devpost, README |
 
-Fill in names: A = ________  B = ________
+Fill in names: A = ________  B = Reagan
 
 ## How we work
 
