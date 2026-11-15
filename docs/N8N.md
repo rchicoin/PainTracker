@@ -17,15 +17,16 @@ Naming: `PainPal · B4 · /log`. Add a sticky note on each canvas: purpose · ow
 | `patient_model` | patientId, offsetHours, dosesLearned, lastUpdated |
 | `predictions` | patientId, doseTime, predictedHours, actualHours (filled later), error |
 
-## B1: Load the demo patient
-Files are made by `node n8n/build.js` (after `node data/generate.js` and `python ml/train.py`), for P001 only.
+## B1: Load the demo patient (one workflow, no manual table setup)
+`n8n/PainPal-Setup.json` creates all 8 tables and loads P001's data from GitHub (`n8n/seed/*.csv`).
 
-1. n8n → your project → **Data tables** → split button (top right) → **Create Data table** → **Import CSV**.
-2. Import each file from `n8n/seed/`, naming the table exactly like the file:
-   `prescription`, `pain_log`, `doses`, `meals`, `walks`, `schedule`, `patient_model`.
-   Check the column types n8n guesses: `score`, `mg`, `km`, `minutes`, `goal`, `doseMg`, `minIntervalH`, `maxMg24h`, `offsetHours`, `dosesLearned`, weather columns = **number**; everything else = **string** (times are ISO strings).
-3. Create `predictions` **from scratch** with the columns above (it starts empty).
-4. Sunday-morning refresh: re-run the three commands, delete the rows in each table, import again.
+1. n8n → **Create workflow** → **⋯** (top right) → **Import from URL** →
+   `https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/PainPal-Setup.json`
+2. Click **Execute workflow**. All nodes go green → open **Data tables** and check that the 8 tables are there.
+3. **Warning:** running it again deletes and recreates the tables (resets learning). Only for first setup and the Sunday refresh.
+
+Sunday-morning refresh: `node data/generate.js` → `python ml/train.py` → `node n8n/build.js` → commit + push →
+wait ~5 min (GitHub caches raw files) → run Setup again → re-import B3 (new weights).
 
 ## Google Calendar → `schedule` (physio heads-ups)
 Workflow `PainPal · Calendar sync`: Schedule Trigger (every 30 min) → **Google Calendar: Get many events** (next 7 days) →
@@ -36,7 +37,9 @@ B3 reads `schedule`, so it works with the seeded events even before Calendar is 
 
 ## B3: Sub-workflow · Check rules & predict
 **Built from the repo:** `n8n/PainPal-B3-check-rules-and-predict.json` (run `node n8n/build.js` to rebuild, `node n8n/test-b3.js` to test locally).
-Import: Workflows → **Import from file**. Then open each **Get …** node and pick its data table. Save.
+Import: **Create workflow** → **⋯** → **Import from URL** →
+`https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/PainPal-B3-check-rules-and-predict.json` → **Save**.
+The Get nodes find their tables by name, so nothing to select. Click **Execute workflow** to test (pinned input P001).
 
 **Trigger:** When called by another workflow (input: `patientId`, optional `now` for demo mode). Pinned test data: `{ "patientId": "P001" }`.
 

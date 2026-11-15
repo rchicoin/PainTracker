@@ -1,0 +1,1394 @@
+{
+  "name": "PainPal · Setup (run once)",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Run setup (resets PainPal tables!)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ],
+      "id": "setup-0-run-setup-resets-painpal-tab"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "delete",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "prescription"
+        }
+      },
+      "name": "Delete old prescription",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        220,
+        200
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "id": "setup-1-delete-old-prescription"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "prescription",
+        "columns": {
+          "column": [
+            {
+              "name": "patientId",
+              "type": "string"
+            },
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "goal",
+              "type": "number"
+            },
+            {
+              "name": "drug",
+              "type": "string"
+            },
+            {
+              "name": "doseMg",
+              "type": "number"
+            },
+            {
+              "name": "minIntervalH",
+              "type": "number"
+            },
+            {
+              "name": "maxMg24h",
+              "type": "number"
+            },
+            {
+              "name": "email",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "name": "Create prescription",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        440,
+        400
+      ],
+      "executeOnce": true,
+      "id": "setup-2-create-prescription"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "delete",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pain_log"
+        }
+      },
+      "name": "Delete old pain_log",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        660,
+        200
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "id": "setup-3-delete-old-pain-log"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "pain_log",
+        "columns": {
+          "column": [
+            {
+              "name": "patientId",
+              "type": "string"
+            },
+            {
+              "name": "time",
+              "type": "string"
+            },
+            {
+              "name": "score",
+              "type": "number"
+            },
+            {
+              "name": "note",
+              "type": "string"
+            },
+            {
+              "name": "pressureHpa",
+              "type": "number"
+            },
+            {
+              "name": "tempC",
+              "type": "number"
+            },
+            {
+              "name": "precipMm",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "name": "Create pain_log",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        880,
+        400
+      ],
+      "executeOnce": true,
+      "id": "setup-4-create-pain-log"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "delete",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "doses"
+        }
+      },
+      "name": "Delete old doses",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        200
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "id": "setup-5-delete-old-doses"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "doses",
+        "columns": {
+          "column": [
+            {
+              "name": "patientId",
+              "type": "string"
+            },
+            {
+              "name": "time",
+              "type": "string"
+            },
+            {
+              "name": "mg",
+              "type": "number"
+            },
+            {
+              "name": "drug",
+              "type": "string"
+            },
+            {
+              "name": "kind",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "name": "Create doses",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        400
+      ],
+      "executeOnce": true,
+      "id": "setup-6-create-doses"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "delete",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "meals"
+        }
+      },
+      "name": "Delete old meals",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        200
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "id": "setup-7-delete-old-meals"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "meals",
+        "columns": {
+          "column": [
+            {
+              "name": "patientId",
+              "type": "string"
+            },
+            {
+              "name": "time",
+              "type": "string"
+            },
+            {
+              "name": "meal",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "name": "Create meals",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        400
+      ],
+      "executeOnce": true,
+      "id": "setup-8-create-meals"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "delete",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "walks"
+        }
+      },
+      "name": "Delete old walks",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1980,
+        200
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "id": "setup-9-delete-old-walks"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "walks",
+        "columns": {
+          "column": [
+            {
+              "name": "patientId",
+              "type": "string"
+            },
+            {
+              "name": "time",
+              "type": "string"
+            },
+            {
+              "name": "km",
+              "type": "number"
+            },
+            {
+              "name": "minutes",
+              "type": "number"
+            },
+            {
+              "name": "source",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "name": "Create walks",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        400
+      ],
+      "executeOnce": true,
+      "id": "setup-10-create-walks"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "delete",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "schedule"
+        }
+      },
+      "name": "Delete old schedule",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2420,
+        200
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "id": "setup-11-delete-old-schedule"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "schedule",
+        "columns": {
+          "column": [
+            {
+              "name": "patientId",
+              "type": "string"
+            },
+            {
+              "name": "start",
+              "type": "string"
+            },
+            {
+              "name": "end",
+              "type": "string"
+            },
+            {
+              "name": "title",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "name": "Create schedule",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        400
+      ],
+      "executeOnce": true,
+      "id": "setup-12-create-schedule"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "delete",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "patient_model"
+        }
+      },
+      "name": "Delete old patient_model",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2860,
+        200
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "id": "setup-13-delete-old-patient-model"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "patient_model",
+        "columns": {
+          "column": [
+            {
+              "name": "patientId",
+              "type": "string"
+            },
+            {
+              "name": "offsetHours",
+              "type": "number"
+            },
+            {
+              "name": "dosesLearned",
+              "type": "number"
+            },
+            {
+              "name": "lastUpdated",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "name": "Create patient_model",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        3080,
+        400
+      ],
+      "executeOnce": true,
+      "id": "setup-14-create-patient-model"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "delete",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "predictions"
+        }
+      },
+      "name": "Delete old predictions",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        3300,
+        200
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "id": "setup-15-delete-old-predictions"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "predictions",
+        "columns": {
+          "column": [
+            {
+              "name": "patientId",
+              "type": "string"
+            },
+            {
+              "name": "doseTime",
+              "type": "string"
+            },
+            {
+              "name": "predictedHours",
+              "type": "number"
+            },
+            {
+              "name": "actualHours",
+              "type": "number"
+            },
+            {
+              "name": "error",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "name": "Create predictions",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        3520,
+        400
+      ],
+      "executeOnce": true,
+      "id": "setup-16-create-predictions"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/seed/prescription.csv",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "name": "Download prescription.csv",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3740,
+        200
+      ],
+      "executeOnce": true,
+      "id": "setup-17-download-prescription-csv"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CSV text -> one item per row, with numbers as numbers and empty cells as null\nconst NUMBERS = [\"goal\",\"doseMg\",\"minIntervalH\",\"maxMg24h\"];\nconst text = $input.first().json.data;\nconst [head, ...lines] = text.trim().split(/\\r?\\n/);\nconst split = (line) => { const out = []; let cur = '', q = false;\n  for (let i = 0; i < line.length; i++) { const c = line[i];\n    if (q) { if (c === '\"' && line[i + 1] === '\"') { cur += '\"'; i++; } else if (c === '\"') q = false; else cur += c; }\n    else if (c === '\"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c; }\n  out.push(cur); return out; };\nconst cols = split(head);\nreturn lines.map((line) => {\n  const v = split(line), row = {};\n  cols.forEach((c, i) => { row[c] = NUMBERS.includes(c) ? (v[i] === '' ? null : Number(v[i])) : v[i]; });\n  return { json: row };\n});"
+      },
+      "name": "Parse prescription",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3960,
+        400
+      ],
+      "id": "setup-18-parse-prescription"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "prescription"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert prescription",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        4180,
+        300
+      ],
+      "id": "setup-19-insert-prescription"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/seed/pain_log.csv",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "name": "Download pain_log.csv",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4400,
+        200
+      ],
+      "executeOnce": true,
+      "id": "setup-20-download-pain-log-csv"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CSV text -> one item per row, with numbers as numbers and empty cells as null\nconst NUMBERS = [\"score\",\"pressureHpa\",\"tempC\",\"precipMm\"];\nconst text = $input.first().json.data;\nconst [head, ...lines] = text.trim().split(/\\r?\\n/);\nconst split = (line) => { const out = []; let cur = '', q = false;\n  for (let i = 0; i < line.length; i++) { const c = line[i];\n    if (q) { if (c === '\"' && line[i + 1] === '\"') { cur += '\"'; i++; } else if (c === '\"') q = false; else cur += c; }\n    else if (c === '\"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c; }\n  out.push(cur); return out; };\nconst cols = split(head);\nreturn lines.map((line) => {\n  const v = split(line), row = {};\n  cols.forEach((c, i) => { row[c] = NUMBERS.includes(c) ? (v[i] === '' ? null : Number(v[i])) : v[i]; });\n  return { json: row };\n});"
+      },
+      "name": "Parse pain_log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4620,
+        400
+      ],
+      "id": "setup-21-parse-pain-log"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pain_log"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert pain_log",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        4840,
+        300
+      ],
+      "id": "setup-22-insert-pain-log"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/seed/doses.csv",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "name": "Download doses.csv",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5060,
+        200
+      ],
+      "executeOnce": true,
+      "id": "setup-23-download-doses-csv"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CSV text -> one item per row, with numbers as numbers and empty cells as null\nconst NUMBERS = [\"mg\"];\nconst text = $input.first().json.data;\nconst [head, ...lines] = text.trim().split(/\\r?\\n/);\nconst split = (line) => { const out = []; let cur = '', q = false;\n  for (let i = 0; i < line.length; i++) { const c = line[i];\n    if (q) { if (c === '\"' && line[i + 1] === '\"') { cur += '\"'; i++; } else if (c === '\"') q = false; else cur += c; }\n    else if (c === '\"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c; }\n  out.push(cur); return out; };\nconst cols = split(head);\nreturn lines.map((line) => {\n  const v = split(line), row = {};\n  cols.forEach((c, i) => { row[c] = NUMBERS.includes(c) ? (v[i] === '' ? null : Number(v[i])) : v[i]; });\n  return { json: row };\n});"
+      },
+      "name": "Parse doses",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5280,
+        400
+      ],
+      "id": "setup-24-parse-doses"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "doses"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert doses",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        5500,
+        300
+      ],
+      "id": "setup-25-insert-doses"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/seed/meals.csv",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "name": "Download meals.csv",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5720,
+        200
+      ],
+      "executeOnce": true,
+      "id": "setup-26-download-meals-csv"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CSV text -> one item per row, with numbers as numbers and empty cells as null\nconst NUMBERS = [];\nconst text = $input.first().json.data;\nconst [head, ...lines] = text.trim().split(/\\r?\\n/);\nconst split = (line) => { const out = []; let cur = '', q = false;\n  for (let i = 0; i < line.length; i++) { const c = line[i];\n    if (q) { if (c === '\"' && line[i + 1] === '\"') { cur += '\"'; i++; } else if (c === '\"') q = false; else cur += c; }\n    else if (c === '\"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c; }\n  out.push(cur); return out; };\nconst cols = split(head);\nreturn lines.map((line) => {\n  const v = split(line), row = {};\n  cols.forEach((c, i) => { row[c] = NUMBERS.includes(c) ? (v[i] === '' ? null : Number(v[i])) : v[i]; });\n  return { json: row };\n});"
+      },
+      "name": "Parse meals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5940,
+        400
+      ],
+      "id": "setup-27-parse-meals"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "meals"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert meals",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        6160,
+        300
+      ],
+      "id": "setup-28-insert-meals"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/seed/walks.csv",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "name": "Download walks.csv",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6380,
+        200
+      ],
+      "executeOnce": true,
+      "id": "setup-29-download-walks-csv"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CSV text -> one item per row, with numbers as numbers and empty cells as null\nconst NUMBERS = [\"km\",\"minutes\"];\nconst text = $input.first().json.data;\nconst [head, ...lines] = text.trim().split(/\\r?\\n/);\nconst split = (line) => { const out = []; let cur = '', q = false;\n  for (let i = 0; i < line.length; i++) { const c = line[i];\n    if (q) { if (c === '\"' && line[i + 1] === '\"') { cur += '\"'; i++; } else if (c === '\"') q = false; else cur += c; }\n    else if (c === '\"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c; }\n  out.push(cur); return out; };\nconst cols = split(head);\nreturn lines.map((line) => {\n  const v = split(line), row = {};\n  cols.forEach((c, i) => { row[c] = NUMBERS.includes(c) ? (v[i] === '' ? null : Number(v[i])) : v[i]; });\n  return { json: row };\n});"
+      },
+      "name": "Parse walks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6600,
+        400
+      ],
+      "id": "setup-30-parse-walks"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "walks"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert walks",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        6820,
+        300
+      ],
+      "id": "setup-31-insert-walks"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/seed/schedule.csv",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "name": "Download schedule.csv",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7040,
+        200
+      ],
+      "executeOnce": true,
+      "id": "setup-32-download-schedule-csv"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CSV text -> one item per row, with numbers as numbers and empty cells as null\nconst NUMBERS = [];\nconst text = $input.first().json.data;\nconst [head, ...lines] = text.trim().split(/\\r?\\n/);\nconst split = (line) => { const out = []; let cur = '', q = false;\n  for (let i = 0; i < line.length; i++) { const c = line[i];\n    if (q) { if (c === '\"' && line[i + 1] === '\"') { cur += '\"'; i++; } else if (c === '\"') q = false; else cur += c; }\n    else if (c === '\"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c; }\n  out.push(cur); return out; };\nconst cols = split(head);\nreturn lines.map((line) => {\n  const v = split(line), row = {};\n  cols.forEach((c, i) => { row[c] = NUMBERS.includes(c) ? (v[i] === '' ? null : Number(v[i])) : v[i]; });\n  return { json: row };\n});"
+      },
+      "name": "Parse schedule",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7260,
+        400
+      ],
+      "id": "setup-33-parse-schedule"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "schedule"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert schedule",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        7480,
+        300
+      ],
+      "id": "setup-34-insert-schedule"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/seed/patient_model.csv",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "name": "Download patient_model.csv",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7700,
+        200
+      ],
+      "executeOnce": true,
+      "id": "setup-35-download-patient-model-csv"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CSV text -> one item per row, with numbers as numbers and empty cells as null\nconst NUMBERS = [\"offsetHours\",\"dosesLearned\"];\nconst text = $input.first().json.data;\nconst [head, ...lines] = text.trim().split(/\\r?\\n/);\nconst split = (line) => { const out = []; let cur = '', q = false;\n  for (let i = 0; i < line.length; i++) { const c = line[i];\n    if (q) { if (c === '\"' && line[i + 1] === '\"') { cur += '\"'; i++; } else if (c === '\"') q = false; else cur += c; }\n    else if (c === '\"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c; }\n  out.push(cur); return out; };\nconst cols = split(head);\nreturn lines.map((line) => {\n  const v = split(line), row = {};\n  cols.forEach((c, i) => { row[c] = NUMBERS.includes(c) ? (v[i] === '' ? null : Number(v[i])) : v[i]; });\n  return { json: row };\n});"
+      },
+      "name": "Parse patient_model",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7920,
+        400
+      ],
+      "id": "setup-36-parse-patient-model"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "patient_model"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert patient_model",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        8140,
+        300
+      ],
+      "id": "setup-37-insert-patient-model"
+    },
+    {
+      "parameters": {
+        "content": "## PainPal · Setup (run once)\nCreates the 8 PainPal data tables and loads demo patient P001 from GitHub (`n8n/seed/`).\n\n**Warning:** deletes and recreates the tables, so learned offsets and new logs are lost. Use it for first setup and the Sunday-morning data refresh only.\n\n**Owner:** Person B · built by n8n/build.js",
+        "height": 240,
+        "width": 480
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -40
+      ],
+      "id": "setup-38-sticky-note"
+    }
+  ],
+  "connections": {
+    "Run setup (resets PainPal tables!)": {
+      "main": [
+        [
+          {
+            "node": "Delete old prescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete old prescription": {
+      "main": [
+        [
+          {
+            "node": "Create prescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create prescription": {
+      "main": [
+        [
+          {
+            "node": "Delete old pain_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete old pain_log": {
+      "main": [
+        [
+          {
+            "node": "Create pain_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create pain_log": {
+      "main": [
+        [
+          {
+            "node": "Delete old doses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete old doses": {
+      "main": [
+        [
+          {
+            "node": "Create doses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create doses": {
+      "main": [
+        [
+          {
+            "node": "Delete old meals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete old meals": {
+      "main": [
+        [
+          {
+            "node": "Create meals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create meals": {
+      "main": [
+        [
+          {
+            "node": "Delete old walks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete old walks": {
+      "main": [
+        [
+          {
+            "node": "Create walks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create walks": {
+      "main": [
+        [
+          {
+            "node": "Delete old schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete old schedule": {
+      "main": [
+        [
+          {
+            "node": "Create schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create schedule": {
+      "main": [
+        [
+          {
+            "node": "Delete old patient_model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete old patient_model": {
+      "main": [
+        [
+          {
+            "node": "Create patient_model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create patient_model": {
+      "main": [
+        [
+          {
+            "node": "Delete old predictions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete old predictions": {
+      "main": [
+        [
+          {
+            "node": "Create predictions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create predictions": {
+      "main": [
+        [
+          {
+            "node": "Download prescription.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download prescription.csv": {
+      "main": [
+        [
+          {
+            "node": "Parse prescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse prescription": {
+      "main": [
+        [
+          {
+            "node": "Insert prescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert prescription": {
+      "main": [
+        [
+          {
+            "node": "Download pain_log.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download pain_log.csv": {
+      "main": [
+        [
+          {
+            "node": "Parse pain_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse pain_log": {
+      "main": [
+        [
+          {
+            "node": "Insert pain_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert pain_log": {
+      "main": [
+        [
+          {
+            "node": "Download doses.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download doses.csv": {
+      "main": [
+        [
+          {
+            "node": "Parse doses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse doses": {
+      "main": [
+        [
+          {
+            "node": "Insert doses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert doses": {
+      "main": [
+        [
+          {
+            "node": "Download meals.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download meals.csv": {
+      "main": [
+        [
+          {
+            "node": "Parse meals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse meals": {
+      "main": [
+        [
+          {
+            "node": "Insert meals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert meals": {
+      "main": [
+        [
+          {
+            "node": "Download walks.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download walks.csv": {
+      "main": [
+        [
+          {
+            "node": "Parse walks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse walks": {
+      "main": [
+        [
+          {
+            "node": "Insert walks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert walks": {
+      "main": [
+        [
+          {
+            "node": "Download schedule.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download schedule.csv": {
+      "main": [
+        [
+          {
+            "node": "Parse schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse schedule": {
+      "main": [
+        [
+          {
+            "node": "Insert schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert schedule": {
+      "main": [
+        [
+          {
+            "node": "Download patient_model.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download patient_model.csv": {
+      "main": [
+        [
+          {
+            "node": "Parse patient_model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse patient_model": {
+      "main": [
+        [
+          {
+            "node": "Insert patient_model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

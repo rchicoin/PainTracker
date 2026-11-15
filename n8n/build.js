@@ -90,10 +90,9 @@ const nodes = [
     name: "When called by another workflow", type: "n8n-nodes-base.executeWorkflowTrigger", typeVersion: 1.1, position: pos(),
   },
   ...TABLES.map((t) => ({
-    parameters: { resource: "row", operation: "get", dataTableId: { __rl: true, mode: "list", value: "", cachedResultName: t }, returnAll: true },
+    parameters: { resource: "row", operation: "get", dataTableId: { __rl: true, mode: "name", value: t }, returnAll: true },
     name: tableNode(t), type: "n8n-nodes-base.dataTable", typeVersion: 1, position: pos(),
     executeOnce: true, alwaysOutputData: true,
-    notes: `Select the "${t}" data table`, notesInFlow: true,
   })),
   {
     parameters: {
@@ -150,7 +149,8 @@ nodes.push(
       content: "## PainPal · B3 · Check rules & predict\n**Purpose:** prescription rules (min interval, 24 h max), " +
         "Ridge prediction + personal offset, patterns, heads-ups. Returns the /dashboard JSON (docs/API.md).\n" +
         "**Owner:** Person B · **Status:** built from repo (n8n/build.js)\n\n" +
-        "**Setup:** in each *Get …* node pick its data table. Test: the trigger has pinned data { patientId: P001 }.\n\n" +
+        "**Setup:** run *PainPal · Setup* first (creates and fills the tables; nodes find them by name). " +
+        "Test: click Execute workflow (pinned data { patientId: P001 }).\n\n" +
         "*Synthetic data. Not medical advice.*",
       height: 260, width: 520,
     },
@@ -182,6 +182,91 @@ const workflow = {
 };
 const wfFile = path.join(__dirname, "PainPal-B3-check-rules-and-predict.json");
 fs.writeFileSync(wfFile, JSON.stringify(workflow, null, 2) + "\n");
+
+// ---------- Setup workflow: creates every table and loads the seed CSVs from GitHub ----------
+const RAW = "https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/seed";
+const SCHEMA = {
+  prescription: { patientId: "string", name: "string", goal: "number", drug: "string", doseMg: "number", minIntervalH: "number", maxMg24h: "number", email: "string" },
+  pain_log: { patientId: "string", time: "string", score: "number", note: "string", pressureHpa: "number", tempC: "number", precipMm: "number" },
+  doses: { patientId: "string", time: "string", mg: "number", drug: "string", kind: "string" },
+  meals: { patientId: "string", time: "string", meal: "string" },
+  walks: { patientId: "string", time: "string", km: "number", minutes: "number", source: "string" },
+  schedule: { patientId: "string", start: "string", end: "string", title: "string" },
+  patient_model: { patientId: "string", offsetHours: "number", dosesLearned: "number", lastUpdated: "string" },
+  predictions: { patientId: "string", doseTime: "string", predictedHours: "number", actualHours: "number", error: "number" },
+};
+const parseCode = (table) => `// CSV text -> one item per row, with numbers as numbers and empty cells as null
+const NUMBERS = ${JSON.stringify(Object.keys(SCHEMA[table]).filter((c) => SCHEMA[table][c] === "number"))};
+const text = $input.first().json.data;
+const [head, ...lines] = text.trim().split(/\\r?\\n/);
+const split = (line) => { const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) { const c = line[i];
+    if (q) { if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; }
+    else if (c === '"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c; }
+  out.push(cur); return out; };
+const cols = split(head);
+return lines.map((line) => {
+  const v = split(line), row = {};
+  cols.forEach((c, i) => { row[c] = NUMBERS.includes(c) ? (v[i] === '' ? null : Number(v[i])) : v[i]; });
+  return { json: row };
+});`;
+
+const sNodes = [];
+let sx = 0;
+const sAt = (y = 300) => [(sx += 220) - 220, y];
+sNodes.push({ parameters: {}, name: "Run setup (resets PainPal tables!)", type: "n8n-nodes-base.manualTrigger", typeVersion: 1, position: sAt() });
+for (const t of Object.keys(SCHEMA)) {
+  sNodes.push({
+    parameters: { resource: "table", operation: "delete", dataTableId: { __rl: true, mode: "name", value: t } },
+    name: `Delete old ${t}`, type: "n8n-nodes-base.dataTable", typeVersion: 1, position: sAt(200),
+    executeOnce: true, alwaysOutputData: true, onError: "continueRegularOutput",
+  });
+  sNodes.push({
+    parameters: {
+      resource: "table", operation: "create", tableName: t,
+      columns: { column: Object.entries(SCHEMA[t]).map(([name, type]) => ({ name, type })) },
+      options: { createIfNotExists: true },
+    },
+    name: `Create ${t}`, type: "n8n-nodes-base.dataTable", typeVersion: 1, position: sAt(400), executeOnce: true,
+  });
+}
+for (const t of Object.keys(SCHEMA).filter((x) => x !== "predictions")) {
+  sNodes.push({
+    parameters: { url: `${RAW}/${t}.csv`, options: { response: { response: { responseFormat: "text", outputPropertyName: "data" } } } },
+    name: `Download ${t}.csv`, type: "n8n-nodes-base.httpRequest", typeVersion: 4.2, position: sAt(200), executeOnce: true,
+  });
+  sNodes.push({
+    parameters: { jsCode: parseCode(t) },
+    name: `Parse ${t}`, type: "n8n-nodes-base.code", typeVersion: 2, position: sAt(400),
+  });
+  sNodes.push({
+    parameters: {
+      resource: "row", operation: "insert", dataTableId: { __rl: true, mode: "name", value: t },
+      columns: { mappingMode: "autoMapInputData", value: {}, matchingColumns: [], schema: [] }, options: {},
+    },
+    name: `Insert ${t}`, type: "n8n-nodes-base.dataTable", typeVersion: 1, position: sAt(300),
+  });
+}
+sNodes.push({
+  parameters: {
+    content: "## PainPal · Setup (run once)\nCreates the 8 PainPal data tables and loads demo patient P001 from GitHub (`n8n/seed/`).\n\n" +
+      "**Warning:** deletes and recreates the tables, so learned offsets and new logs are lost. " +
+      "Use it for first setup and the Sunday-morning data refresh only.\n\n**Owner:** Person B · built by n8n/build.js",
+    height: 240, width: 480,
+  },
+  name: "Sticky Note", type: "n8n-nodes-base.stickyNote", typeVersion: 1, position: [0, -40],
+});
+sNodes.forEach((n, i) => { n.id = `setup-${i}-${id(n.name)}`.slice(0, 36); });
+const sConn = {};
+const sChain = sNodes.filter((n) => n.type !== "n8n-nodes-base.stickyNote").map((n) => n.name);
+for (let i = 0; i < sChain.length - 1; i++) {
+  // after an Insert, the next Download runs once (executeOnce), not once per inserted row
+  sConn[sChain[i]] = { main: [[{ node: sChain[i + 1], type: "main", index: 0 }]] };
+}
+const setupFile = path.join(__dirname, "PainPal-Setup.json");
+fs.writeFileSync(setupFile, JSON.stringify({ name: "PainPal · Setup (run once)", nodes: sNodes, connections: sConn,
+  settings: { executionOrder: "v1" } }, null, 2) + "\n");
+console.log(`Setup:    ${path.relative(ROOT, setupFile)} (${sNodes.length} nodes)`);
 
 console.log(`Seed CSVs for ${PATIENT} in n8n/seed/:`, Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(", "));
 console.log(`Workflow: ${path.relative(ROOT, wfFile)} (${nodes.length} nodes, Code node ${jsCode.length} chars)`);
