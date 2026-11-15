@@ -50,7 +50,7 @@ Fill in names: A = ________  B = Reagan
 - [x] **B3** Sub-workflow **Check rules & predict** (`docs/N8N.md`)
 - [ ] **B4** Workflow **/log**
 - [ ] **B5** Personal learning: update patient offset after each completed dose
-- [ ] **B6** Workflow **/dashboard**
+- [x] **B6** Workflow **/dashboard**
 - [ ] **B7** Workflow **Heads-ups** (schedule → email)
 - [ ] **B8** Workflow **Weekly summary** (AI + chart + patient approval)
 - [ ] **B9** Error workflow; export all workflows to `n8n/`
