@@ -52,7 +52,7 @@
     {
       "id": "947fa435-b373-26b7-d0c6-007f85b12e03",
       "parameters": {
-        "content": "## PainPal · B9 · Error alerts\nEmails the team when any PainPal workflow fails.\n\n**Setup:** ✏️ email in *Settings* · Gmail credential · Publish · then in each PainPal workflow: **⋯ → Settings → Error workflow → PainPal · B9 · Error alerts**.",
+        "content": "## PainPal · B9 · Error alerts (optional)\nEmails the team when any PainPal workflow fails.\n\n**Setup:** ✏️ email in *Settings* · Gmail credential · Publish · then in each PainPal workflow: **⋯ → Settings → Error workflow → PainPal · B9 · Error alerts**.",
         "width": 480,
         "height": 200
       },

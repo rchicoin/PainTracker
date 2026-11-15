@@ -91,34 +91,21 @@ log a dose → later log pain above goal → the reply says what it learned → 
 ## B6: /dashboard
 Webhook GET `/dashboard?patientId=P001` (optional `&now=ISO` for demo mode) → Get tables → weather → **Compute status** → Respond with the dashboard JSON.
 
-## B7: Heads-ups (`PainPal-B7-heads-ups.json` + `PainPal-B7-check-in-form.json`)
-Import both from URL (`…/n8n/<file>`), then: ✏️ email in the **Settings** node · pick a Gmail credential in **Email heads-up** · **Publish** both.
+## B7: Email updates (`PainPal-B7-email-updates.json`)
+Import from URL, then: ✏️ email in the **Settings** node · pick a Gmail credential in **Send email** · **Publish**.
+Demo: click *Execute workflow* on **Demo: send emails now**.
 
-Schedule (every 30 min) **or** Manual "Demo: send heads-ups now" → Settings → Get tables → weather → **Compute status** → Get `alerts` →
-**Code: Decide heads-ups** → Gmail (one email per heads-up) → Insert `alerts` (each heads-up is sent once):
-- pain likely back above goal within 30 min → "Heads-up: pain likely back around 11:22 PM" + when the next dose is allowed
-- physio on the calendar (`schedule`) within 3 h
-- no pain log for 4 h between 8 AM and 9 PM → check-in email with the **form** link `/form/painpal-checkin`
-- the form posts to **/log**, so the answer is saved, rule-checked and used for learning exactly like the app
-- **demo mode** pretends it's 20 min before pain is likely back, so the email fires on camera (and ignores "already sent")
+Three triggers → Settings → Get tables → weather → **Compute status** (same as B3) → Get `predictions`, `alerts` →
+**Code: Decide emails** → **Gmail** (one email each) → Insert `alerts` (each email is sent once):
+- **Every 30 min:** heads-up when pain is likely back above goal within 30 min
+  ("Pain likely back around 3:10 PM. Your next dose is allowed at 2:45 PM."), or physio is on the calendar (`schedule`) within 3 h
+- **Every day 8 PM:** today's average pain vs goal, as-needed doses vs the daily max, walks, and what PainPal learned today
+- **Demo button:** sends the heads-up (as if 20 min before pain is back) and today's update right away
 
-Every email ends with the 811 safety line and "Demo with synthetic data. Not medical advice." Tests: `node n8n/test-b7-b9.js`.
+Every email links to the app and ends with the 811 safety line and "Demo with synthetic data. Not medical advice."
+Tests: `node n8n/test-b7-b9.js`. Simplified from the original plan: no check-in form and no AI weekly summary (B8 dropped).
 
-## B8: Weekly summary, human in the loop (`PainPal-B8-weekly-summary.json`)
-Import from URL, then: ✏️ `SEND_TO` + `PRESCRIBER_TO` in **Settings** · **Anthropic** credential in *Claude: write summary*
-(Credentials → Anthropic → API key) · Gmail credential in the 3 Gmail nodes · **Publish**. Demo: *Execute workflow* on **Demo: send summary now**.
-
-Monday 9 AM (or demo button) → Settings → Get tables → weather → Compute status → Get predictions →
-1. **Code: Weekly stats** (last 7 days): average pain vs goal, % logs above goal, as-needed doses and mg/day vs max, days at max,
-   walks, physio sessions, patterns, doses learned from, prediction error; **QuickChart** line chart of daily pain vs goal
-2. **HTTP Request → Claude Opus 5.5** (`claude-opus-5-5`, effort low, `anthropic-version: 2026-10-21`, server-side refusal
-   fallback on): writes a 120–180-word plain-language summary **from those numbers only**, no medical advice, never suggests dose changes
-3. **Code: Summary email**: Claude's text (HTML-escaped) + chart + stats table + safety footer. If Claude is unavailable or declines,
-   a template summary is used, so the workflow never breaks
-4. **Gmail** summary to the patient → **Gmail send-and-wait** "Share with your prescriber?" (Yes / No buttons)
-5. **IF** approved → Gmail to the prescriber · otherwise nothing is sent ("Kept private")
-
-## B9: Error workflow (`PainPal-B9-error-alerts.json`)
+## B9: Error workflow, optional (`PainPal-B9-error-alerts.json`)
 Error Trigger → Settings (✏️ email) → Gmail to the team: workflow name, failed node, error, link to the execution.
 Publish it, then in each PainPal workflow: **⋯ → Settings → Error workflow → PainPal · B9 · Error alerts** → Save.
 

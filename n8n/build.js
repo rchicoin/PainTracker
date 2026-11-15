@@ -504,8 +504,8 @@ const switchRule = (type) => ({
   console.log(`B4/B6:    n8n/PainPal-B4-log.json (${b4.length} nodes), n8n/PainPal-B6-dashboard.json (${b6.length} nodes)`);
 }
 
-// ---------- B7 (heads-ups by email), check-in form, B9 (error alerts) ----------
-const N8N_BASE = "https://team17.app.n8n.cloud";
+// ---------- B7: Email updates (heads-ups + daily update), B9 (error alerts, optional) ----------
+const APP_URL = "https://pain-tracker-rosy.vercel.app";
 const gmail = (name, extra = {}) => ({
   parameters: { sendTo: "={{ $json.sendTo }}", subject: "={{ $json.subject }}", emailType: "html", message: "={{ $json.html }}",
     options: { appendAttribution: false }, ...extra },
@@ -518,115 +518,128 @@ const SEND_TO = 'you@example.com';
 if (SEND_TO === 'you@example.com') throw new Error('Open the "Settings" node and set SEND_TO to your email address');
 ${extra}`;
 
-const B7_SETTINGS = SETTINGS(`const demo = $input.first().json.demo === true; // true when started from "Demo: send heads-ups now"
-return [{ json: { patientId: 'P001', now: null, demo, sendTo: SEND_TO, checkinUrl: '${N8N_BASE}/form/painpal-checkin' } }];`);
+const EMAIL_SETTINGS = SETTINGS(`// mode comes from the trigger: 'headsups' (every 30 min), 'daily' (8 PM) or 'demo' (button: sends both now)
+const mode = $input.first().json.mode || 'headsups';
+return [{ json: { patientId: 'P001', now: null, mode, sendTo: SEND_TO, appUrl: '${APP_URL}' } }];`);
 
-const B7_DECIDE = `// Which heads-ups to send now? Each one is sent once (key saved in the "alerts" table).
-// Demo mode pretends it is 20 min before pain is likely back, so the heads-up fires on camera.
+const EMAIL_DECIDE = `// Which emails to send now? Each one is sent once (its key is saved in the "alerts" table).
+//  - heads-up: pain likely back above goal within 30 min
+//  - heads-up: physio on the calendar within 3 h
+//  - daily update (8 PM): today's pain, doses vs the daily max, walks, what PainPal learned
+// Demo mode sends the heads-up as if it were 20 min before pain is back, plus today's daily update, even if sent before.
 const S = $('Settings').first().json;
 const s = $('Compute status').first().json;
 const TZ = 'America/Vancouver';
 const clock = (t) => new Date(t).toLocaleTimeString('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
-const hourOf = (t) => Number(new Intl.DateTimeFormat('en-CA', { timeZone: TZ, hour: 'numeric', hourCycle: 'h23' }).format(new Date(t)));
 const dayOf = (t) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(t));
+const mine = (node) => $(node).all().map((i) => i.json).filter((r) => r && String(r.patientId) === S.patientId);
 const sent = $('Get alerts').all().map((i) => i.json).filter((r) => r && r.key).map((r) => r.key);
+const demo = S.mode === 'demo';
+const r1 = (x) => Math.round(x * 10) / 10;
 
+const realNow = new Date(s.now);
 const back = s.painLikelyBackAt ? new Date(s.painLikelyBackAt) : null;
-const now = S.demo && back ? new Date(back.getTime() - 20 * 60000) : new Date(s.now);
+const now = demo && back ? new Date(back.getTime() - 20 * 60000) : realNow;
 const nextDose = new Date(s.nextDoseAt);
 const doseText = nextDose <= now ? 'A dose is allowed now (within your prescription).' : 'Your next dose is allowed at ' + clock(nextDose) + '.';
-const alerts = [];
+const emails = [];
 
-// 1) pain likely back above goal within 30 min
-if (back && back > now && back - now <= 30 * 60000) {
-  alerts.push({ key: 'painback|' + s.prediction.doseTime, subject: 'Heads-up: pain likely back around ' + clock(back),
-    lines: ['Based on your own pattern, your pain is likely to rise above your goal (' + s.patient.goal + '/10) around ' + clock(back) + '.', doseText] });
-}
-// 2) physio on the calendar within 3 h
-const physio = $('Get schedule').all().map((i) => i.json)
-  .filter((e) => e && String(e.patientId) === S.patientId && /physio/i.test(e.title || ''))
-  .map((e) => new Date(e.start)).filter((d) => d > now && d - now <= 3 * 3600000).sort((a, b) => a - b)[0];
-if (physio) {
-  alerts.push({ key: 'physio|' + physio.toISOString(), subject: 'Heads-up: physio at ' + clock(physio),
-    lines: ['You have physio at ' + clock(physio) + ' (from your calendar). Pain often comes back sooner after physio.', doseText] });
-}
-// 3) no pain log for 4 h while awake (8 AM - 9 PM): check-in with a 10-second form
-const lastPain = s.painNow ? new Date(s.painNow.at) : null;
-const h = hourOf(now);
-if (h >= 8 && h < 21 && (!lastPain || now - lastPain >= 4 * 3600000)) {
-  alerts.push({ key: 'checkin|' + dayOf(now) + '|' + Math.floor(h / 4), subject: "How's your pain right now?",
-    lines: ["You haven't logged your pain in a while. It takes 10 seconds: <a href=\\"" + S.checkinUrl + "\\">tell PainPal how you feel</a>."] });
+if (S.mode === 'headsups' || demo) {
+  if (back && back > now && back - now <= 30 * 60000) {
+    emails.push({ key: 'painback|' + s.prediction.doseTime, subject: 'Heads-up: pain likely back around ' + clock(back),
+      lines: ['Based on your own pattern, your pain is likely to rise above your goal (' + s.patient.goal + '/10) around ' + clock(back) + '.', doseText] });
+  }
+  const physio = mine('Get schedule').filter((e) => /physio/i.test(e.title || ''))
+    .map((e) => new Date(e.start)).filter((d) => d > now && d - now <= 3 * 3600000).sort((a, b) => a - b)[0];
+  if (physio) {
+    emails.push({ key: 'physio|' + physio.toISOString(), subject: 'Heads-up: physio at ' + clock(physio),
+      lines: ['You have physio at ' + clock(physio) + ' (from your calendar). Pain often comes back sooner after physio.', doseText] });
+  }
 }
 
-const footer = '<p style="color:#666;font-size:13px">Feeling very drowsy or confused? Don\\'t take more. Call 811 or your care team.<br>' +
+if (S.mode === 'daily' || demo) {
+  const today = dayOf(realNow);
+  const pain = mine('Get pain_log').filter((p) => dayOf(p.time) === today).map((p) => Number(p.score));
+  const doses = mine('Get doses').filter((d) => dayOf(d.time) === today && (!d.kind || d.kind === 'as-needed'));
+  const mg = doses.reduce((t, d) => t + Number(d.mg || 0), 0);
+  const walks = mine('Get walks').filter((w) => dayOf(w.time) === today);
+  const learned = mine('Get predictions').filter((p) => p.actualHours !== null && p.actualHours !== undefined && dayOf(p.doseTime) === today);
+  const avg = pain.length ? r1(pain.reduce((t, x) => t + x, 0) / pain.length) : null;
+  const above = pain.filter((x) => x > s.patient.goal).length;
+  const offset = s.model.personalOffsetMin;
+  const lines = [
+    pain.length ? 'Pain: average <b>' + avg + '/10</b> (your goal is ' + s.patient.goal + '/10) across ' + pain.length + ' logs; ' +
+      above + ' above your goal.' : 'Pain: nothing logged today.',
+    'Medication: ' + doses.length + ' as-needed dose' + (doses.length === 1 ? '' : 's') + ' today (' + mg + ' of your ' +
+      s.patient.maxMg24h + ' mg daily maximum). ' + doseText,
+    'Activity: ' + walks.length + ' walk' + (walks.length === 1 ? '' : 's') +
+      (walks.length ? ' (' + walks.reduce((t, w) => t + Number(w.minutes || 0), 0) + ' min)' : '') + '.',
+    learned.length
+      ? 'PainPal learned from ' + learned.length + ' dose' + (learned.length === 1 ? '' : 's') + ' today. Last one: relief lasted ' +
+        r1(learned[learned.length - 1].actualHours) + ' h (predicted ' + r1(learned[learned.length - 1].predictedHours) + ' h). ' +
+        'Your pain now usually returns about ' + Math.abs(offset) + ' min ' + (offset >= 0 ? 'later' : 'earlier') + ' than average.'
+      : 'PainPal has learned from ' + s.model.dosesLearnedFrom + ' of your doses so far.',
+  ];
+  if (s.patterns && s.patterns.length) lines.push('Your pattern: ' + s.patterns[0]);
+  emails.push({ key: 'daily|' + today, subject: 'Your PainPal update for today', lines });
+}
+
+const footer = '<p><a href="' + S.appUrl + '">Open PainPal</a> to log how you feel.</p>' +
+  '<p style="color:#666;font-size:13px">Feeling very drowsy or confused? Don\\'t take more. Call 811 or your care team.<br>' +
   'Demo with synthetic data. Not medical advice.</p>';
 const first = String(s.patient.name || '').split(' ')[0];
-return alerts.filter((a) => S.demo || !sent.includes(a.key)).map((a) => ({ json: {
-  key: a.key, sendTo: S.sendTo, subject: a.subject,
-  html: '<p>Hi ' + first + ',</p>' + a.lines.map((l) => '<p>' + l + '</p>').join('') + footer + '<p>– PainPal</p>',
+return emails.filter((e) => demo || !sent.includes(e.key)).map((e) => ({ json: {
+  key: e.key, sendTo: S.sendTo, subject: e.subject,
+  html: '<p>Hi ' + first + ',</p>' + e.lines.map((l) => '<p>' + l + '</p>').join('') + footer + '<p>– PainPal</p>',
 } }));`;
 
 {
-  const b7 = [
+  const setMode = (name, mode, y) => place({ parameters: { mode: "manual",
+    assignments: { assignments: [{ id: `mode-${mode}`, name: "mode", value: mode, type: "string" }] }, options: {} },
+    name, type: "n8n-nodes-base.set", typeVersion: 3.4 }, [220, y]);
+  const em = [
     place({ parameters: { rule: { interval: [{ field: "minutes", minutesInterval: 30 }] } },
-      name: "Every 30 min", type: "n8n-nodes-base.scheduleTrigger", typeVersion: 1.2 }, [0, 200]),
-    place({ parameters: {}, name: "Demo: send heads-ups now", type: "n8n-nodes-base.manualTrigger", typeVersion: 1 }, [0, 420]),
-    place({ parameters: { mode: "manual", assignments: { assignments: [{ id: "demo", name: "demo", value: true, type: "boolean" }] },
-      options: {} }, name: "Demo mode", type: "n8n-nodes-base.set", typeVersion: 3.4 }, [220, 420]),
-    place(code("Settings", B7_SETTINGS, "✏️ set your email here once"), [440, 300]),
+      name: "Every 30 min", type: "n8n-nodes-base.scheduleTrigger", typeVersion: 1.2 }, [0, 100]),
+    place({ parameters: { rule: { interval: [{ field: "days", triggerAtHour: 20 }] } },
+      name: "Every day 8 PM", type: "n8n-nodes-base.scheduleTrigger", typeVersion: 1.2 }, [0, 300]),
+    place({ parameters: {}, name: "Demo: send emails now", type: "n8n-nodes-base.manualTrigger", typeVersion: 1 }, [0, 500]),
+    setMode("Heads-up check", "headsups", 100),
+    setMode("Daily update", "daily", 300),
+    setMode("Demo mode", "demo", 500),
+    place(code("Settings", EMAIL_SETTINGS, "✏️ set your email here once"), [440, 300]),
     place({ parameters: { resource: "table", operation: "create", tableName: "alerts",
       columns: { column: Object.entries(SCHEMA.alerts).map(([name, type]) => ({ name, type })) }, options: { createIfNotExists: true } },
       name: "Alerts table (create if missing)", type: "n8n-nodes-base.dataTable", typeVersion: 1, executeOnce: true }, [660, 300]),
   ];
-  let sx7 = 880;
-  b7.push(...statusNodes("$('Settings').first().json", () => [(sx7 += 220) - 220, 300]));
-  b7.push(place({ parameters: { resource: "row", operation: "get", dataTableId: { __rl: true, mode: "name", value: "alerts" }, returnAll: true },
-    name: "Get alerts", type: "n8n-nodes-base.dataTable", typeVersion: 1, executeOnce: true, alwaysOutputData: true }, [sx7, 300]));
-  b7.push(place(code("Decide heads-ups", B7_DECIDE, "pain likely back · physio soon · check-in"), [sx7 + 220, 300]));
-  b7.push(place(gmail("Email heads-up"), [sx7 + 440, 300]));
-  b7.push(place(code("Alert rows", `return $('Decide heads-ups').all().map((i) => ({ json: {
-  patientId: $('Settings').first().json.patientId, key: i.json.key, sentAt: new Date().toISOString() } }));`), [sx7 + 660, 300]));
-  b7.push(place(insert("alerts"), [sx7 + 880, 300]));
-  b7.push(sticky("## PainPal · B7 · Heads-ups\nEvery 30 min: rules + prediction → email when pain is likely back within 30 min, " +
-    "physio is on the calendar within 3 h, or no pain log for 4 h (check-in form link). Each heads-up is sent once.\n\n" +
-    "**Setup:** ✏️ email in *Settings* · pick Gmail credential in *Email heads-up* · Publish.\n" +
-    "**Demo:** click *Execute workflow* on **Demo: send heads-ups now** (pretends it's 20 min before pain is back).\n\n" +
-    "**Owner:** Person B · built by n8n/build.js", [-40, -320], 560, 280));
-  const chain7 = ["Settings", "Alerts table (create if missing)", ...TABLES.map(tableNode), "Get weather (Open-Meteo)", "Compute status",
-    "Get alerts", "Decide heads-ups", "Email heads-up", "Alert rows", "Insert alerts"];
-  fs.writeFileSync(path.join(__dirname, "PainPal-B7-heads-ups.json"), JSON.stringify({
-    name: "PainPal · B7 · Heads-ups", nodes: finish("b7", b7),
-    connections: wire([["Every 30 min", "Settings"], ["Demo: send heads-ups now", "Demo mode"], ["Demo mode", "Settings"],
-      ...chain7.slice(0, -1).map((n, i) => [n, chain7[i + 1]])]),
+  let sxe = 880;
+  em.push(...statusNodes("$('Settings').first().json", () => [(sxe += 220) - 220, 300]));
+  const tail = [
+    { parameters: { resource: "row", operation: "get", dataTableId: { __rl: true, mode: "name", value: "predictions" }, returnAll: true },
+      name: "Get predictions", type: "n8n-nodes-base.dataTable", typeVersion: 1, executeOnce: true, alwaysOutputData: true },
+    { parameters: { resource: "row", operation: "get", dataTableId: { __rl: true, mode: "name", value: "alerts" }, returnAll: true },
+      name: "Get alerts", type: "n8n-nodes-base.dataTable", typeVersion: 1, executeOnce: true, alwaysOutputData: true },
+    code("Decide emails", EMAIL_DECIDE, "heads-ups · physio · daily update (each sent once)"),
+    gmail("Send email"),
+    code("Alert rows", `return $('Decide emails').all().map((i) => ({ json: {
+  patientId: $('Settings').first().json.patientId, key: i.json.key, sentAt: new Date().toISOString() } }));`),
+    insert("alerts"),
+  ];
+  tail.forEach((n, i) => em.push(place(n, [sxe + i * 220, 300])));
+  em.push(sticky("## PainPal · B7 · Email updates\n**Every 30 min:** heads-up when pain is likely back above goal within 30 min, " +
+    "or physio is on the calendar within 3 h. **Every day 8 PM:** today's pain, doses vs the daily max, walks, and what PainPal learned. " +
+    "Each email is sent once.\n\n**Setup:** ✏️ email in *Settings* · Gmail credential in *Send email* · Publish.\n" +
+    "**Demo:** *Execute workflow* on **Demo: send emails now**.\n\n**Owner:** Person B · built by n8n/build.js", [-40, -380], 600, 260));
+  const chainE = ["Settings", "Alerts table (create if missing)", ...TABLES.map(tableNode), "Get weather (Open-Meteo)", "Compute status",
+    ...tail.map((n) => n.name)];
+  fs.writeFileSync(path.join(__dirname, "PainPal-B7-email-updates.json"), JSON.stringify({
+    name: "PainPal · B7 · Email updates", nodes: finish("email", em),
+    connections: wire([["Every 30 min", "Heads-up check"], ["Every day 8 PM", "Daily update"], ["Demo: send emails now", "Demo mode"],
+      ["Heads-up check", "Settings"], ["Daily update", "Settings"], ["Demo mode", "Settings"],
+      ...chainE.slice(0, -1).map((n, i) => [n, chainE[i + 1]])]),
     settings: { executionOrder: "v1" },
   }, null, 2) + "\n");
 
-  // Check-in form: the link in the check-in email. Saves through /log, so rules and B5 learning apply too.
-  const form = [
-    place({ parameters: {
-      path: "painpal-checkin", formTitle: "How's your pain right now?",
-      formDescription: "PainPal check-in. Demo with synthetic data. Not medical advice.",
-      formFields: { values: [
-        { fieldLabel: "Pain", fieldType: "number", requiredField: true, placeholder: "0 = no pain, 10 = worst" },
-        { fieldLabel: "Note", fieldType: "textarea", placeholder: "Optional, e.g. after stairs" },
-      ] },
-      options: { respondWithOptions: { values: { respondWith: "text",
-        formSubmittedText: "Thanks! PainPal saved your check-in. Feeling very drowsy or confused? Don't take more. Call 811 or your care team." } } },
-    }, name: "Check-in form", type: "n8n-nodes-base.formTrigger", typeVersion: 2.2, webhookId: uuid("painpal-checkin-form") }, [0, 300]),
-    place({ parameters: { method: "POST", url: `${N8N_BASE}/webhook/log`, sendBody: true, specifyBody: "json",
-      jsonBody: "={{ JSON.stringify({ patientId: 'P001', type: 'pain', score: Math.max(0, Math.min(10, Math.round(Number($json.Pain)))), note: ($json.Note || 'check-in form').slice(0, 200) }) }}",
-      options: {} }, name: "Save via /log", type: "n8n-nodes-base.httpRequest", typeVersion: 4.2,
-      notes: "Same path as the app: rules + learning apply", notesInFlow: true }, [260, 300]),
-    sticky("## PainPal · B7 · Check-in form\nThe check-in email links here (`/form/painpal-checkin`). The answer goes through **/log**, " +
-      "so it is saved, checked against the prescription and used for learning, exactly like the app.\n\n**Publish** this workflow.",
-      [-40, -60], 480, 180),
-  ];
-  fs.writeFileSync(path.join(__dirname, "PainPal-B7-check-in-form.json"), JSON.stringify({
-    name: "PainPal · B7 · Check-in form", nodes: finish("form", form),
-    connections: wire([["Check-in form", "Save via /log"]]), settings: { executionOrder: "v1" },
-  }, null, 2) + "\n");
-
-  // B9: error workflow. In each PainPal workflow: Settings -> Error workflow -> "PainPal · B9 · Error alerts".
+  // B9 (optional): error workflow. In each PainPal workflow: Settings -> Error workflow -> "PainPal · B9 · Error alerts".
   const b9 = [
     place({ parameters: {}, name: "Error Trigger", type: "n8n-nodes-base.errorTrigger", typeVersion: 1 }, [0, 300]),
     place(code("Settings", SETTINGS(`const e = $input.first().json;
@@ -638,7 +651,7 @@ return [{ json: { sendTo: SEND_TO, subject: 'PainPal error in ' + wf,
   html: '<p><b>' + esc(wf) + '</b> failed' + (ex.lastNodeExecuted ? ' at node <b>' + esc(ex.lastNodeExecuted) + '</b>' : '') + '.</p>' +
     '<p>' + esc(msg) + '</p>' + (ex.url ? '<p><a href="' + ex.url + '">Open the execution</a></p>' : '') } }];`), "✏️ set your email here once"), [220, 300]),
     place(gmail("Email the team"), [440, 300]),
-    sticky("## PainPal · B9 · Error alerts\nEmails the team when any PainPal workflow fails.\n\n**Setup:** ✏️ email in *Settings* · " +
+    sticky("## PainPal · B9 · Error alerts (optional)\nEmails the team when any PainPal workflow fails.\n\n**Setup:** ✏️ email in *Settings* · " +
       "Gmail credential · Publish · then in each PainPal workflow: **⋯ → Settings → Error workflow → PainPal · B9 · Error alerts**.",
       [-40, -60], 480, 200),
   ];
@@ -646,181 +659,7 @@ return [{ json: { sendTo: SEND_TO, subject: 'PainPal error in ' + wf,
     name: "PainPal · B9 · Error alerts", nodes: finish("b9", b9),
     connections: wire([["Error Trigger", "Settings"], ["Settings", "Email the team"]]), settings: { executionOrder: "v1" },
   }, null, 2) + "\n");
-  console.log("B7/B9:    n8n/PainPal-B7-heads-ups.json, n8n/PainPal-B7-check-in-form.json, n8n/PainPal-B9-error-alerts.json");
-}
-
-// ---------- B8: weekly summary (Claude writes it, patient approves before the prescriber sees it) ----------
-const B8_SETTINGS = SETTINGS(`// ✏️ Who gets the summary if the patient approves (for the demo this can be your own address too)
-const PRESCRIBER_TO = 'prescriber@example.com';
-if (PRESCRIBER_TO === 'prescriber@example.com') throw new Error('Open the "Settings" node and set PRESCRIBER_TO');
-return [{ json: { patientId: 'P001', now: null, sendTo: SEND_TO, prescriberTo: PRESCRIBER_TO } }];`);
-
-const B8_STATS = `// The week's numbers (last 7 days), a QuickChart chart, and the request for Claude.
-// Claude only rewrites these numbers in plain language; it never decides anything about doses.
-const S = $('Settings').first().json;
-const s = $('Compute status').first().json;
-const TZ = 'America/Vancouver';
-const H = 3600000, DAY = 24 * H;
-const now = new Date(s.now);
-const since = now.getTime() - 7 * DAY;
-const mine = (node) => $(node).all().map((i) => i.json).filter((r) => r && String(r.patientId) === S.patientId);
-const inWeek = (t) => { const x = new Date(t).getTime(); return x > since && x <= now.getTime(); };
-const r1 = (x) => Math.round(x * 10) / 10;
-const avg = (a) => (a.length ? a.reduce((p, x) => p + x, 0) / a.length : null);
-const dayKey = (t) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(t));
-const dayLabel = (t) => new Date(t).toLocaleDateString('en-US', { timeZone: TZ, weekday: 'short' });
-
-const goal = s.patient.goal;
-const pain = mine('Get pain_log').filter((p) => inWeek(p.time));
-const doses = mine('Get doses').filter((d) => inWeek(d.time) && (!d.kind || d.kind === 'as-needed'));
-const walks = mine('Get walks').filter((w) => inWeek(w.time));
-const physio = mine('Get schedule').filter((e) => /physio/i.test(e.title || '') && inWeek(e.start));
-const preds = mine('Get predictions').filter((p) => inWeek(p.doseTime) && p.actualHours !== null && p.actualHours !== undefined);
-
-const days = [];
-for (let i = 6; i >= 0; i--) {
-  const t = now.getTime() - i * DAY;
-  const scores = pain.filter((p) => dayKey(p.time) === dayKey(t)).map((p) => Number(p.score));
-  const mg = doses.filter((d) => dayKey(d.time) === dayKey(t)).reduce((p, d) => p + Number(d.mg || 0), 0);
-  days.push({ day: dayLabel(t), avgPain: scores.length ? r1(avg(scores)) : null, mg });
-}
-
-const stats = {
-  patientFirstName: String(s.patient.name || '').split(' ')[0],
-  goal,
-  painLogs: pain.length,
-  averagePain: pain.length ? r1(avg(pain.map((p) => Number(p.score)))) : null,
-  percentLogsAboveGoal: pain.length ? Math.round((100 * pain.filter((p) => Number(p.score) > goal).length) / pain.length) : null,
-  asNeededDoses: doses.length,
-  averageMgPerDay: r1(doses.reduce((p, d) => p + Number(d.mg || 0), 0) / 7),
-  prescriptionMaxMgPerDay: s.patient.maxMg24h,
-  daysAtDailyMaximum: days.filter((d) => d.mg >= s.patient.maxMg24h).length,
-  walks: walks.length,
-  walkMinutes: walks.reduce((p, w) => p + Number(w.minutes || 0), 0),
-  physioSessions: physio.length,
-  patterns: s.patterns,
-  dosesLearnedFrom: s.model.dosesLearnedFrom,
-  personalOffsetMinutes: s.model.personalOffsetMin,
-  predictionErrorMinutesThisWeek: preds.length ? Math.round(avg(preds.map((p) => Math.abs(Number(p.error)))) * 60) : null,
-  days,
-};
-
-const chart = {
-  type: 'line',
-  data: { labels: days.map((d) => d.day), datasets: [
-    { label: 'Average pain', data: days.map((d) => d.avgPain), borderColor: '#2563eb', fill: false, spanGaps: true },
-    { label: 'Your goal', data: days.map(() => goal), borderColor: '#16a34a', borderDash: [6, 4], fill: false, pointRadius: 0 },
-  ] },
-  options: { scales: { yAxes: [{ ticks: { min: 0, max: 10 } }] } },
-};
-const chartUrl = 'https://quickchart.io/chart?w=600&h=300&c=' + encodeURIComponent(JSON.stringify(chart));
-
-const claudeRequest = {
-  model: 'claude-opus-5-5',
-  max_tokens: 16000,
-  output_config: { effort: 'low' },
-  fallbacks: 'default',
-  system: 'You write a short weekly pain summary for a patient using the PainPal demo app. ' +
-    'Use ONLY the numbers and patterns in the JSON you are given; never invent numbers. ' +
-    'Plain, warm language at a grade 6 reading level, 120-180 words, no headings, no markdown, no lists. ' +
-    'Mention how the week went against their pain goal, how often they used their as-needed medication compared with the daily maximum, ' +
-    'activity (walks, physio), one or two of their patterns, and that PainPal keeps learning from their doses. ' +
-    'Never give medical advice and never suggest changing doses or the prescription; if something looks concerning, ' +
-    'suggest talking with their care team. Address the patient by first name.',
-  messages: [{ role: 'user', content: JSON.stringify(stats) }],
-};
-return [{ json: { ...S, stats, chartUrl, claudeRequest } }];`;
-
-const B8_EMAIL = `// Build the summary email. If Claude didn't answer (no credential, error, refusal), use a plain template instead.
-const w = $('Weekly stats').first().json;
-const st = w.stats;
-const res = $input.first().json || {};
-let text = null, writtenBy = 'template';
-if (res.stop_reason && res.stop_reason !== 'refusal' && Array.isArray(res.content)) {
-  const t = res.content.filter((b) => b.type === 'text').map((b) => b.text).join('\\n').trim();
-  if (t) { text = t; writtenBy = 'Claude (' + (res.model || 'claude-opus-5-5') + ')'; }
-}
-if (!text) {
-  text = 'Hi ' + st.patientFirstName + ', this week you logged your pain ' + st.painLogs + ' times. Your average was ' + st.averagePain +
-    '/10 (your goal is ' + st.goal + '/10), and ' + st.percentLogsAboveGoal + '% of logs were above your goal. You used your as-needed medication ' +
-    st.asNeededDoses + ' times (about ' + st.averageMgPerDay + ' mg a day; your maximum is ' + st.prescriptionMaxMgPerDay + ' mg). ' +
-    'You walked ' + st.walks + ' times and had ' + st.physioSessions + ' physio sessions. PainPal has learned from ' + st.dosesLearnedFrom +
-    ' of your doses. If anything worries you, talk with your care team.';
-}
-const esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-const row = (k, v) => '<tr><td style="padding:2px 12px 2px 0;color:#555">' + k + '</td><td><b>' + esc(v) + '</b></td></tr>';
-const html = '<h2 style="margin:0 0 8px">Your PainPal week</h2>' +
-  esc(text).split(/\\n+/).map((p) => '<p>' + p + '</p>').join('') +
-  '<p><img src="' + w.chartUrl + '" alt="Pain this week" width="600" style="max-width:100%"></p>' +
-  '<table style="font-size:14px">' + row('Average pain', st.averagePain + ' / 10 (goal ' + st.goal + ')') +
-  row('Logs above goal', st.percentLogsAboveGoal + '%') + row('As-needed doses', st.asNeededDoses + ' (avg ' + st.averageMgPerDay + ' mg/day, max ' + st.prescriptionMaxMgPerDay + ')') +
-  row('Walks', st.walks + ' (' + st.walkMinutes + ' min)') + row('Physio sessions', st.physioSessions) +
-  row('PainPal learned from', st.dosesLearnedFrom + ' doses') + '</table>' +
-  '<p style="color:#666;font-size:13px">Summary written by ' + esc(writtenBy) + ' from your logged numbers only.<br>' +
-  "Feeling very drowsy or confused? Don't take more. Call 811 or your care team.<br>Demo with synthetic data. Not medical advice.</p>";
-return [{ json: { sendTo: w.sendTo, prescriberTo: w.prescriberTo, subject: 'Your PainPal week', html, writtenBy,
-  approvalText: 'Hi ' + st.patientFirstName + ', your weekly PainPal summary is in your inbox. Would you like to share it with your prescriber? ' +
-    'Nothing is sent unless you choose "Yes, share it".' } }];`;
-
-{
-  const b8 = [
-    place({ parameters: { rule: { interval: [{ field: "weeks", triggerAtDay: [1], triggerAtHour: 9 }] } },
-      name: "Every Monday 9 AM", type: "n8n-nodes-base.scheduleTrigger", typeVersion: 1.2 }, [0, 200]),
-    place({ parameters: {}, name: "Demo: send summary now", type: "n8n-nodes-base.manualTrigger", typeVersion: 1 }, [0, 420]),
-    place(code("Settings", B8_SETTINGS, "✏️ set both emails here once"), [220, 300]),
-  ];
-  let sx8 = 440;
-  b8.push(...statusNodes("$('Settings').first().json", () => [(sx8 += 220) - 220, 300]));
-  const X8 = (i) => sx8 + i * 220;
-  b8.push(
-    place({ parameters: { resource: "row", operation: "get", dataTableId: { __rl: true, mode: "name", value: "predictions" }, returnAll: true },
-      name: "Get predictions", type: "n8n-nodes-base.dataTable", typeVersion: 1, executeOnce: true, alwaysOutputData: true }, [X8(0), 300]),
-    place(code("Weekly stats", B8_STATS, "numbers + QuickChart + Claude request"), [X8(1), 300]),
-    place({ parameters: {
-      method: "POST", url: "https://api.anthropic.com/v1/messages",
-      authentication: "predefinedCredentialType", nodeCredentialType: "anthropicApi",
-      sendHeaders: true, headerParameters: { parameters: [
-        { name: "anthropic-version", value: "2026-10-21" },
-        { name: "anthropic-beta", value: "server-side-fallback-2026-07-01" },
-      ] },
-      sendBody: true, specifyBody: "json", jsonBody: "={{ JSON.stringify($json.claudeRequest) }}", options: {},
-    }, name: "Claude: write summary", type: "n8n-nodes-base.httpRequest", typeVersion: 4.2,
-    alwaysOutputData: true, onError: "continueRegularOutput",
-    notes: "Pick your Anthropic credential once · Claude Opus 5.5", notesInFlow: true }, [X8(2), 300]),
-    place(code("Summary email", B8_EMAIL, "falls back to a template if Claude is unavailable"), [X8(3), 300]),
-    place(gmail("Email summary to patient"), [X8(4), 300]),
-    place({ ...gmail("Ask patient: share with prescriber?", {
-      operation: "sendAndWait", sendTo: "={{ $('Summary email').first().json.sendTo }}",
-      subject: "Share your PainPal summary with your prescriber?", message: "={{ $('Summary email').first().json.approvalText }}",
-      approvalOptions: { values: { approvalType: "double", approveLabel: "Yes, share it", disapproveLabel: "No, keep it private" } },
-      options: { appendAttribution: false },
-    }), parameters: { operation: "sendAndWait", sendTo: "={{ $('Summary email').first().json.sendTo }}",
-      subject: "Share your PainPal summary with your prescriber?", message: "={{ $('Summary email').first().json.approvalText }}",
-      responseType: "approval",
-      approvalOptions: { values: { approvalType: "double", approveLabel: "Yes, share it", disapproveLabel: "No, keep it private" } },
-      options: { appendAttribution: false } },
-    notes: "Human in the loop: waits for the patient's answer", notesInFlow: true }, [X8(5), 300]),
-    place(ifNode("Patient approved?", "data.approved", null), [X8(6), 300]),
-    place({ ...gmail("Send to prescriber"), parameters: {
-      sendTo: "={{ $('Summary email').first().json.prescriberTo }}",
-      subject: "=PainPal weekly summary (shared by your patient)", emailType: "html",
-      message: "={{ $('Summary email').first().json.html }}", options: { appendAttribution: false } } }, [X8(7), 200]),
-    place(code("Kept private", "// The patient said no: nothing is sent.\nreturn [{ json: { shared: false, at: new Date().toISOString() } }];"), [X8(7), 420]),
-    sticky("## PainPal · B8 · Weekly summary (human in the loop)\nMonday 9 AM (or the demo button): week's stats → **Claude Opus 5.5** writes a " +
-      "plain-language summary from those numbers only → email + QuickChart chart to the patient → **the patient approves** before it goes to the prescriber.\n\n" +
-      "**Setup:** ✏️ emails in *Settings* · Anthropic credential in *Claude: write summary* · Gmail credential in the 3 Gmail nodes · Publish.\n" +
-      "No Anthropic key? It still works with a template summary.\n\n**Owner:** Person B · built by n8n/build.js", [-40, -340], 600, 300),
-  );
-  const chain8 = ["Settings", ...TABLES.map(tableNode), "Get weather (Open-Meteo)", "Compute status", "Get predictions", "Weekly stats",
-    "Claude: write summary", "Summary email", "Email summary to patient", "Ask patient: share with prescriber?", "Patient approved?"];
-  fs.writeFileSync(path.join(__dirname, "PainPal-B8-weekly-summary.json"), JSON.stringify({
-    name: "PainPal · B8 · Weekly summary", nodes: finish("b8", b8),
-    connections: wire([["Every Monday 9 AM", "Settings"], ["Demo: send summary now", "Settings"],
-      ...chain8.slice(0, -1).map((n, i) => [n, chain8[i + 1]]),
-      ["Patient approved?", "Send to prescriber", 0], ["Patient approved?", "Kept private", 1]]),
-    settings: { executionOrder: "v1" },
-  }, null, 2) + "\n");
-  console.log("B8:       n8n/PainPal-B8-weekly-summary.json");
+  console.log("Email:    n8n/PainPal-B7-email-updates.json, n8n/PainPal-B9-error-alerts.json (optional)");
 }
 
 console.log(`Seed CSVs for ${PATIENT} in n8n/seed/:`, Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(", "));
