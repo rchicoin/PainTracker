@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import { formatTime } from '../format.js'
 
 const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snack']
 
-// A3: one-tap logging for dose, meal and a manual walk.
-export default function QuickActions({ onLog, busy }) {
+// A3: quick logging for dose, meal and a manual walk.
+// `dash` (optional) is the latest /dashboard reply, used only to display prescription info.
+export default function QuickActions({ onLog, busy, dash }) {
   const [showMeals, setShowMeals] = useState(false)
+  const [confirmDose, setConfirmDose] = useState(false)
   const [walkMin, setWalkMin] = useState('')
 
   function logWalk(e) {
@@ -19,9 +22,36 @@ export default function QuickActions({ onLog, busy }) {
     <section className="card">
       <h2>Quick log</h2>
 
-      <button className="btn-quick" disabled={busy} onClick={() => onLog({ type: 'dose' })}>
+      <button className="btn-quick" disabled={busy} onClick={() => setConfirmDose(!confirmDose)}>
         💊 Took my dose
       </button>
+      {confirmDose && (
+        <div className="confirm">
+          {dash && (
+            <p>
+              Log <strong>{dash.patient.doseMg} mg {dash.patient.drug}</strong> taken now?
+              {!dash.doseAllowedNow && (
+                <span className="confirm-note">
+                  {' '}Your prescription allows the next dose at <strong>{formatTime(dash.nextDoseAt)}</strong>.
+                </span>
+              )}
+            </p>
+          )}
+          {!dash && <p>Log your dose taken now?</p>}
+          <div className="confirm-row">
+            <button
+              className="btn-small"
+              disabled={busy}
+              onClick={() => onLog({ type: 'dose' }, () => setConfirmDose(false))}
+            >
+              Yes, I took it
+            </button>
+            <button className="btn-ghost" onClick={() => setConfirmDose(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <button className="btn-quick" disabled={busy} onClick={() => setShowMeals(!showMeals)}>
         🍽 Ate a meal

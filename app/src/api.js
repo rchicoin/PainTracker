@@ -5,6 +5,21 @@ export const PATIENT_ID = 'P001'
 
 const BASE_URL = import.meta.env.VITE_N8N_URL
 
+// True until VITE_N8N_URL is set: the app shows fake data and says so.
+export const USING_FAKE_DATA = !BASE_URL
+
+// fetch + JSON with friendly error messages.
+async function request(url, options) {
+  let res
+  try {
+    res = await fetch(url, options)
+  } catch {
+    throw new Error(navigator.onLine ? "Can't reach PainTracker right now" : 'You seem to be offline')
+  }
+  if (!res.ok) throw new Error(`Something went wrong on our side (error ${res.status})`)
+  return res.json()
+}
+
 // ---- Fake replies (copied from docs/API.md), used until VITE_N8N_URL is set ----
 
 const FAKE_LOG_REPLY = {
@@ -69,13 +84,11 @@ export async function logEntry(entry) {
     return FAKE_LOG_REPLY
   }
 
-  const res = await fetch(`${BASE_URL}/log`, {
+  return request(`${BASE_URL}/log`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`Server error (${res.status})`)
-  return res.json()
 }
 
 // GET /dashboard
@@ -85,7 +98,5 @@ export async function getDashboard() {
     return FAKE_DASHBOARD
   }
 
-  const res = await fetch(`${BASE_URL}/dashboard?patientId=${encodeURIComponent(PATIENT_ID)}`)
-  if (!res.ok) throw new Error(`Server error (${res.status})`)
-  return res.json()
+  return request(`${BASE_URL}/dashboard?patientId=${encodeURIComponent(PATIENT_ID)}`)
 }

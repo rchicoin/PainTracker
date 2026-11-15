@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { getDashboard, logEntry } from './api.js'
+import { useCallback, useEffect, useState } from 'react'
+import { USING_FAKE_DATA, getDashboard, logEntry } from './api.js'
 import { formatTime } from './format.js'
 import MyStatus from './components/MyStatus.jsx'
 import PainForm from './components/PainForm.jsx'
@@ -48,6 +48,11 @@ export default function App() {
     }
   }
 
+  const closeReply = useCallback(() => {
+    setReply(null)
+    setError(null)
+  }, [])
+
   // A6: when a GPS walk finishes, send only distance and minutes.
   const walkTracker = useWalkTracker(({ km, minutes }) =>
     handleLog({ type: 'walk', km, minutes, source: 'auto' }),
@@ -60,12 +65,15 @@ export default function App() {
       <div className="app">
         <header className="header">
           <h1>PainTracker</h1>
-          {dash && <span className="muted small">Updated {formatTime(dash.now)} · from n8n</span>}
+          {dash && (
+            <span className="muted small">
+              Updated {formatTime(dash.now)} ·{' '}
+              {USING_FAKE_DATA ? <span className="fake-tag">sample data, n8n not connected</span> : 'from n8n'}
+            </span>
+          )}
         </header>
 
         <main>
-          <Reply reply={reply} error={error} />
-
           {dashError && (
             <div className="reply reply-error" role="alert">
               Couldn't load your dashboard: {dashError}.{' '}
@@ -78,7 +86,7 @@ export default function App() {
           <div className="two-col-wide">
             <PainForm onLog={handleLog} busy={busy} />
             <div>
-              <QuickActions onLog={handleLog} busy={busy} />
+              <QuickActions onLog={handleLog} busy={busy} dash={dash} />
               <WalkTracker tracker={walkTracker} />
               {dash && <LearningCard model={dash.model} />}
             </div>
@@ -97,6 +105,8 @@ export default function App() {
           <strong>Demo with synthetic data. Not medical advice.</strong>
         </footer>
       </div>
+
+      <Reply reply={reply} error={error} onClose={closeReply} />
     </>
   )
 }
