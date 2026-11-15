@@ -13,7 +13,7 @@ Track: **n8n track** (+ overall). n8n must do the real work; the app only displa
 | **B: Brain** | `n8n/`, `ml/`, `data/` | n8n workflows, data storage, prescription rules, model training + learning |
 | Both | | Demo video, Devpost, README |
 
-Fill in names: A = ________  B = Reagan
+Fill in names: A = Hamza  B = Reagan
 
 ## How we work
 
@@ -42,7 +42,7 @@ Fill in names: A = ________  B = Reagan
 - [x] **A5** Connect to real n8n `/log` and `/dashboard` (`VITE_N8N_URL`)
 - [x] **A6** Auto walk tracking: location permission once → track while app is open → send `{type:"walk", km, minutes}` when movement stops (coordinates never leave the phone)
 - [x] **A7** Deploy to Vercel (HTTPS needed for GPS on phones) + PWA install (`vite-plugin-pwa`)
-- [ ] **A8** Polish: loading states, error messages, safety text, mobile layout
+- [x] **A8** Polish: loading states, error messages, safety text, mobile layout
 
 ### Person B: Brain
 - [x] **B1** Pick one demo patient from `data/`; create n8n Data Tables (or Google Sheets) and load their history

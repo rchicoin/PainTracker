@@ -11,6 +11,10 @@ PainTracker is a patient web app that learns your personal pain pattern and give
 
 Built for the **UBC LOOP × n8n Buildathon** (Nov 14–15, 2026), n8n track.
 
+| Your dashboard | Why this prediction | Log in a tap | Live updates |
+|---|---|---|---|
+| <img src="docs/screenshots/dashboard.png" width="200" alt="Dashboard: next dose, pain likely back, 24-hour pain chart, patterns"> | <img src="docs/screenshots/why-card.png" width="200" alt="Why card: evening 48 min sooner, physio 32 min sooner, personal pattern 14 min later"> | <img src="docs/screenshots/logging.png" width="200" alt="Pain slider, quick log buttons, auto walk tracking"> | <img src="docs/screenshots/live-update.png" width="200" alt="After logging pain 8, changed numbers and the new chart point are highlighted"> |
+
 ---
 
 ## The problem
@@ -19,10 +23,12 @@ Pain is individual and changes hour to hour. Prescriptions for "as needed" pain 
 
 ## What PainTracker does
 
-- 📝 **Quick logging:** pain score (0–10), "Took my dose" (with a confirm step), meals, and walks
+- 📝 **Quick logging:** pain score (0–10), "Took my dose" (with a confirm step), meals, walks, and physio appointments
 - 🚶 **Automatic walk tracking:** while the app is open, walks are detected on the phone and logged as distance + minutes
 - ⏱ **Prescription-aware status:** when your next dose is allowed, mg used of your 24 h maximum, and a clear "Daily max reached" state
 - 🔮 **Personal prediction:** "Your pain is likely back around 3:00 PM"
+- 🩺 **Plan around physio:** add an appointment and the prediction updates right away (physio soon after a dose shortens relief)
+- ❓ **Why this prediction:** shows what moved it, e.g. *Evening: 48 min sooner · Your personal pattern: 14 min later*
 - 💡 **Your patterns:** e.g. "Walks over 1 km raise your pain about 2 points within 2 hours"
 - 🔔 **Heads-ups in the app:** pain likely back soon, daily max reached, physio coming up
 - 📈 **Live updates:** after every log, the dashboard refreshes and highlights what changed (new chart point, updated prediction, new heads-ups)
@@ -42,7 +48,7 @@ React web app (PWA) ──► n8n webhooks ──► rules · patterns · predic
 - **App (`app/`):** React + Vite, installable as a PWA, deployed on Vercel. It only displays data and collects input; there is no business logic in the app. All calls go through `app/src/api.js`.
 - **n8n (`n8n/`):** all the logic, in three workflows on n8n Cloud:
   - **B3 · Check rules & predict**: prescription rules (interval, 24 h max), patterns, and the model's prediction
-  - **B4 · POST /log**: validates and saves pain, dose, meal and walk entries; adds current weather (Open-Meteo); runs the rules and replies with a message and any warning; **learns** from each completed dose
+  - **B4 · POST /log**: validates and saves pain, dose, meal, walk and physio entries; adds current weather (Open-Meteo); runs the rules and replies with a message and any warning; **learns** from each completed dose
   - **B6 · GET /dashboard**: everything the app's dashboard shows
   - Storage: n8n Data Tables (`prescription`, `doses`, `pain_log`, `meals`, `walks`, `schedule`, `patient_model`, `predictions`)
 - **Model (`ml/`):** a personalized linear regression (Ridge, scikit-learn) that predicts *hours until pain rises above your goal after a dose*. A per-patient offset is updated in n8n after every dose (`offset = 0.7 × offset + 0.3 × error`), so predictions adapt to each patient. Details: [`docs/MODEL.md`](docs/MODEL.md).
@@ -110,7 +116,7 @@ PainTracker/
 
 - All data is **synthetic** and only reproduces the patterns we programmed into it. It shows the method works, not clinical accuracy.
 - One as-needed pain medication per patient. The scheduled medication (Baselinol) comes from the demo history; the app doesn't log it yet.
-- Physio appointments come from demo data (no live calendar connection).
+- Physio appointments are entered in the app (no live calendar connection yet).
 - The n8n webhooks have no login: fine for a demo with fictional data, but a real app would need patient accounts.
 - Real-world use would require real, consented, de-identified data, clinical validation and regulatory review.
 
