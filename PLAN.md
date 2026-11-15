@@ -35,7 +35,7 @@ Fill in names: A = ________  B = Reagan
 - [ ] Agree on `docs/API.md` (edit now if needed)
 
 ### Person A: App
-- [ ] **A1** React + Vite app runs (`app/`)
+- [x] **A1** React + Vite app runs (`app/`)
 - [ ] **A2** Home screen: pain slider 0–10, body location, "Log pain"
 - [ ] **A3** Quick buttons: "Took my dose", "Ate a meal", "I walked ~__ min"
 - [ ] **A4** Dashboard cards + pain chart using fake `/dashboard` JSON (`docs/API.md`)
