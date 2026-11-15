@@ -39,7 +39,7 @@ Fill in names: A = ________  B = Reagan
 - [x] **A2** Home screen: pain slider 0–10, body location, "Log pain"
 - [x] **A3** Quick buttons: "Took my dose", "Ate a meal", "I walked ~__ min"
 - [x] **A4** Dashboard cards + pain chart using fake `/dashboard` JSON (`docs/API.md`)
-- [ ] **A5** Connect to real n8n `/log` and `/dashboard` (`VITE_N8N_URL`)
+- [x] **A5** Connect to real n8n `/log` and `/dashboard` (`VITE_N8N_URL`)
 - [x] **A6** Auto walk tracking: location permission once → track while app is open → send `{type:"walk", km, minutes}` when movement stops (coordinates never leave the phone)
 - [x] **A7** Deploy to Vercel (HTTPS needed for GPS on phones) + PWA install (`vite-plugin-pwa`)
 - [ ] **A8** Polish: loading states, error messages, safety text, mobile layout
