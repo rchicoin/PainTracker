@@ -6,6 +6,8 @@ import PainForm from './components/PainForm.jsx'
 import QuickActions from './components/QuickActions.jsx'
 import Reply from './components/Reply.jsx'
 import LearningCard from './components/LearningCard.jsx'
+import WalkTracker from './components/WalkTracker.jsx'
+import { useWalkTracker } from './useWalkTracker.js'
 
 export default function App() {
   const [dash, setDash] = useState(null)
@@ -46,6 +48,11 @@ export default function App() {
     }
   }
 
+  // A6: when a GPS walk finishes, send only distance and minutes.
+  const walkTracker = useWalkTracker(({ km, minutes }) =>
+    handleLog({ type: 'walk', km, minutes, source: 'auto' }),
+  )
+
   return (
     <>
       <div className="banner">DEMO · synthetic data and fictional medicines · NOT MEDICAL ADVICE</div>
@@ -72,6 +79,7 @@ export default function App() {
             <PainForm onLog={handleLog} busy={busy} />
             <div>
               <QuickActions onLog={handleLog} busy={busy} />
+              <WalkTracker tracker={walkTracker} />
               {dash && <LearningCard model={dash.model} />}
             </div>
           </div>
