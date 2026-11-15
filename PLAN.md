@@ -1,4 +1,4 @@
-# PainPal: team plan
+# PainTracker: team plan
 
 **Deadline: Sun Nov 15, 3:00 PM PST. No edits to the repo or Devpost after that (disqualification).**
 Build freeze 11:00 AM Sunday. Video recorded by ~1 PM. Submit by 2:30 PM.

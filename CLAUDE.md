@@ -1,4 +1,4 @@
-# PainPal: hackathon project (UBC LOOP × n8n Buildathon, Nov 14–15 2026)
+# PainTracker: hackathon project (UBC LOOP × n8n Buildathon, Nov 14–15 2026)
 
 ## Read these first
 - `PLAN.md`: roles, task list (A1–A8 app, B1–B9 n8n/model), timeline, deadlines

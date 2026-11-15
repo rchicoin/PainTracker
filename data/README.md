@@ -2,7 +2,7 @@
 
 **Everything here is made up.** 30 fictional patients, fictional drugs (*DemoRelief* as-needed, *Baselinol* scheduled), simulated Vancouver weather. Not real patient data. Not medical advice.
 
-It only contains what the app and n8n collect: **walks** (GPS km + minutes, never coordinates; manual walks have minutes only), **step counts**, **pain scores**, **medication times**, **meal times**, **weather**, and **calendar events** (physio, planned walks) that n8n reads from Google Calendar. Patients aren't assumed to be post-surgery.
+It only contains what the app and n8n collect: **walks** (GPS km + minutes, never coordinates; manual walks have minutes only), **step counts**, **pain scores**, **medication times**, **meal times**, **weather**, and **calendar events** (physio, planned walks): seeded demo data plus physio appointments entered in the app (no live Google Calendar sync). Patients aren't assumed to be post-surgery.
 
 ## Regenerate (then retrain and rebuild the n8n files)
 ```

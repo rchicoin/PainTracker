@@ -91,7 +91,7 @@ Response (Person A: use this as the **fake data** until n8n is live):
 }
 ```
 
-`model` is shown in a small "How PainPal learns" card: "Learned from 14 of your doses. Your pain returns about 22 min earlier than average."
+`model` is shown in a small "How PainTracker learns" card: "Learned from 14 of your doses. Your pain returns about 22 min earlier than average."
 
 ---
 

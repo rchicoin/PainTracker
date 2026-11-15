@@ -41,9 +41,9 @@ Filled in by `ml/train.py` (it prints this table).
 
 | Model | Average error |
 |---|---|
-| Patient's own median (simple baseline) | 44 min |
+| Patient's own median (simple baseline) | 45 min |
 | Linear, same for everyone | 38 min |
-| **Linear + personal offset (our model)** | **35 min** |
+| **Linear + personal offset (our model)** | **36 min** |
 
 Biggest effects found: evenings (about −48 min of relief), physio within 2 h (about −32 min), each km walked in the previous 3 h (about −20 min), each pain point at the dose (about −20 min), rain (about −8 min per mm).
 
