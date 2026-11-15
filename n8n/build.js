@@ -78,7 +78,16 @@ const result = checkRulesAndPredict({
 ${TABLES.map((t) => `  ${{ pain_log: "pain", patient_model: "patientModel" }[t] || t}: rows('${tableNode(t)}'),`).join("\n")}
   weatherApi,
 });
-return [{ json: result }];
+${inputExpr.includes("Check request") ? `// R1: for a new physio appointment, also predict without it so /log can say how the prediction moved
+if (input.type === 'physio') {
+  const at = new Date(input.body.at).getTime();
+  const schedule = rows('Get schedule').filter((r) => !(/physio/i.test(r.title || '') && Math.abs(new Date(r.start).getTime() - at) < 1000));
+  const before = checkRulesAndPredict({ patientId: input.patientId || 'P001', now: input.now || null, weights: WEIGHTS,
+${TABLES.map((t) => `    ${{ pain_log: "pain", patient_model: "patientModel" }[t] || t}: ${t === "schedule" ? "schedule" : `rows('${tableNode(t)}')`},`).join("\n")}
+    weatherApi });
+  result.before = { painLikelyBackAt: before.painLikelyBackAt };
+}
+` : ""}return [{ json: result }];
 `;
 const jsCode = computeCode("$('When called by another workflow').first().json");
 
@@ -321,16 +330,23 @@ const finish = (prefix, nodes) => nodes.map((n, i) => ({ id: uuid(`${prefix}-${i
 const CHECK_REQUEST = `// Validate the app's request (docs/API.md). Bad requests get a 400 with a clear message.
 ${LOCAL_ISO}
 const body = $input.first().json.body || {};
-const types = ['pain', 'dose', 'meal', 'walk'];
+const types = ['pain', 'dose', 'meal', 'walk', 'physio'];
 const isNum = (x) => x !== null && x !== undefined && x !== '' && Number.isFinite(Number(x));
 let error = null;
-if (!types.includes(body.type)) error = 'type must be one of: pain, dose, meal, walk';
+if (!types.includes(body.type)) error = 'type must be one of: pain, dose, meal, walk, physio';
 else if (body.type === 'pain' && !(isNum(body.score) && Number.isInteger(Number(body.score)) && body.score >= 0 && body.score <= 10))
   error = 'score must be a whole number from 0 to 10';
 else if (body.type === 'walk' && !(isNum(body.minutes) && body.minutes > 0 && body.minutes <= 600))
   error = 'minutes must be a number from 1 to 600';
 else if (body.type === 'walk' && body.km !== null && body.km !== undefined && !(isNum(body.km) && body.km >= 0 && body.km < 100))
   error = 'km must be a number, or null for manual walks';
+else if (body.type === 'physio') {
+  // R1: appointment start, from 2 h ago up to 7 days ahead
+  const at = new Date(body.at);
+  const ahead = (at.getTime() - Date.now()) / 3600000;
+  if (!body.at || isNaN(at)) error = 'at must be a date and time (ISO 8601)';
+  else if (ahead < -2 || ahead > 7 * 24) error = 'Physio time must be between 2 hours ago and 7 days ahead';
+}
 return [{ json: { valid: !error, error, type: body.type, patientId: String(body.patientId || 'P001'), time: localIso(new Date()), body } }];`;
 
 const ROW = {
@@ -351,6 +367,11 @@ const c = $('Check request').first().json;
 const km = c.body.km === null || c.body.km === undefined || c.body.km === '' ? null : Math.round(Number(c.body.km) * 100) / 100;
 return [{ json: { patientId: c.patientId, time: c.time, km, minutes: Math.round(Number(c.body.minutes)),
   source: c.body.source === 'auto' ? 'auto' : 'manual' } }];`,
+  physio: `// R1: physio appointment -> schedule table (45 min). The prediction counts physio within 2 h after a dose.
+${LOCAL_ISO}
+const c = $('Check request').first().json;
+const start = new Date(c.body.at);
+return [{ json: { patientId: c.patientId, start: localIso(start), end: localIso(new Date(start.getTime() + 45 * 60000)), title: 'Physio' } }];`,
 };
 
 const BUILD_REPLY = `// Reply to the app: { ok, message, warning, status } (docs/API.md). Never suggests a dose outside the prescription.
@@ -385,6 +406,17 @@ if (c.type === 'pain') {
     warning = (tooEarly ? 'This dose was earlier than your prescription allows (every ' + s.patient.minIntervalH + ' h). ' : '') +
       (overMax ? 'You are over your 24 h maximum (' + s.mgMax24h + ' mg). ' : '') + SAFETY;
   }
+} else if (c.type === 'physio') {
+  // R1: say how the prediction moved (Compute status also predicts without this appointment)
+  const day = (t) => new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/Vancouver' });
+  const at = new Date(c.body.at);
+  const when = (day(at) === day(c.time) ? '' : day(at) === day(new Date(c.time).getTime() + 24 * H) ? 'tomorrow ' :
+    at.toLocaleDateString('en-US', { timeZone: 'America/Vancouver', weekday: 'short', month: 'short', day: 'numeric' }) + ' ') + clock(at);
+  const was = s.before ? s.before.painLikelyBackAt : null, now = s.painLikelyBackAt;
+  message = 'Physio ' + when + ' saved. ';
+  if (now && was && now !== was) message += 'Pain likely back around ' + clock(now) + ' (was ' + clock(was) + ').';
+  else if (now) message += 'Your current prediction stays at ' + clock(now) + ' (physio counts when it is within 2 h after a dose).';
+  else message += 'It will be used for your next dose.';
 } else if (c.type === 'meal') {
   message = 'Meal logged. ' + next;
 } else {
@@ -431,7 +463,7 @@ const switchRule = (type) => ({
     place(respond("Respond: bad request", {
       respondWith: "json", responseBody: "={{ JSON.stringify({ ok: false, message: $json.error }) }}", options: { responseCode: 400 },
     }), [X(3), 520]),
-    place({ parameters: { rules: { values: ["pain", "dose", "meal", "walk"].map(switchRule) }, options: {} },
+    place({ parameters: { rules: { values: ["pain", "dose", "meal", "walk", "physio"].map(switchRule) }, options: {} },
       name: "Type?", type: "n8n-nodes-base.switch", typeVersion: 3.2 }, [X(3), 300]),
     place({ parameters: { url: "https://api.open-meteo.com/v1/forecast", sendQuery: true, queryParameters: { parameters: [
       { name: "latitude", value: "49.26" }, { name: "longitude", value: "-123.25" },
@@ -444,10 +476,12 @@ const switchRule = (type) => ({
     place(code("Dose row", ROW.dose, "mg from the prescription"), [X(5), 200]),
     place(code("Meal row", ROW.meal), [X(5), 400]),
     place(code("Walk row", ROW.walk, "km may be null (manual walk)"), [X(5), 600]),
+    place(code("Physio row", ROW.physio, "R1: appointment -> schedule"), [X(5), 800]),
     place(insert("pain_log"), [X(6), 0]),
     place(insert("doses"), [X(6), 200]),
     place(insert("meals"), [X(6), 400]),
     place(insert("walks"), [X(6), 600]),
+    place(insert("schedule"), [X(6), 800]),
   ];
   let sx4 = X(7);
   b4.push(...statusNodes("$('Check request').first().json", () => [(sx4 += 220) - 220, 300]));
@@ -465,7 +499,7 @@ const switchRule = (type) => ({
   b4.push(place(insert("predictions"), [sx4 + 1320, 140]));
   b4.push(place(code("Build reply", BUILD_REPLY, "message + warning (too early / over 24 h max) + what was learned"), [sx4 + 1540, 300]));
   b4.push(place(respond("Respond"), [sx4 + 1760, 300]));
-  b4.push(sticky("## PainPal · B4 · POST /log\nSaves pain / dose / meal / walk from the app, then re-checks prescription rules " +
+  b4.push(sticky("## PainPal · B4 · POST /log\nSaves pain / dose / meal / walk / physio from the app, then re-checks prescription rules " +
     "and the prediction, and replies `{ ok, message, warning, status }` (docs/API.md).\n\n**Owner:** Person B · built by n8n/build.js\n" +
     "**Activate** the workflow so the app can use `/webhook/log`. CORS: Vercel app + localhost.", [-40, -300], 520, 240));
   const chainStart = tableNode(TABLES[0]);
@@ -474,11 +508,11 @@ const switchRule = (type) => ({
   const b4Conn = wire([
     ["Webhook", "Check request"], ["Check request", "Valid request?"],
     ["Valid request?", "Type?", 0], ["Valid request?", "Respond: bad request", 1],
-    ["Type?", "Pain: weather now", 0], ["Type?", "Dose: get prescription", 1], ["Type?", "Meal row", 2], ["Type?", "Walk row", 3],
+    ["Type?", "Pain: weather now", 0], ["Type?", "Dose: get prescription", 1], ["Type?", "Meal row", 2], ["Type?", "Walk row", 3], ["Type?", "Physio row", 4],
     ["Pain: weather now", "Pain row"], ["Pain row", "Insert pain_log"],
     ["Dose: get prescription", "Dose row"], ["Dose row", "Insert doses"],
-    ["Meal row", "Insert meals"], ["Walk row", "Insert walks"],
-    ...["pain_log", "doses", "meals", "walks"].map((t) => [`Insert ${t}`, chainStart]),
+    ["Meal row", "Insert meals"], ["Walk row", "Insert walks"], ["Physio row", "Insert schedule"],
+    ...["pain_log", "doses", "meals", "walks", "schedule"].map((t) => [`Insert ${t}`, chainStart]),
     ...statusChain.slice(0, -1).map((n, i) => [n, statusChain[i + 1]]),
     ["Learned?", "Model row", 0], ["Learned?", "Build reply", 1],
     ...learnChain.slice(0, -1).map((n, i) => [n, learnChain[i + 1]]),

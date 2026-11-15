@@ -125,7 +125,7 @@ function checkRulesAndPredict({ patientId, now, weights, prescription, doses, pa
   }
   const physio = calendar.find((e) => /physio/i.test(e.title || "") && new Date(e.start) > NOW && new Date(e.start) - NOW <= 3 * H);
   if (physio) {
-    headsUps.push(`Physio at ${clock(new Date(physio.start))} (from your calendar). Pain may come back sooner afterwards. ` +
+    headsUps.push(`Physio at ${clock(new Date(physio.start))}. Pain may come back sooner afterwards. ` +
       `Your next dose is allowed ${doseAllowedNow ? "now" : "at " + clock(nextDoseAt)}.`);
   }
 

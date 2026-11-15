@@ -68,8 +68,8 @@ Ordered by demo value. **If time runs short, cut from the bottom.** Items 1 + 2 
 | R4 | **My medication screen** | `POST /prescription` with validation (400 on bad values) | Form: name, dose mg, min hours between doses, daily max mg, pain goal | B 1 h · A 1.5 h |
 | R5 | **Forecast line** | `/dashboard` returns `forecast` points | Dashed line on the chart: last dose → "pain likely back" | B 45 min · A 1 h |
 
-- [ ] **R0** API agreement (together)
-- [ ] **R1-B** · [ ] **R1-A** Physio time entry
+- [x] **R0** API agreement (together)
+- [x] **R1-B** · [x] **R1-A** Physio time entry (both built by B; re-import B4 to go live)
 - [ ] **R2-B** · [ ] **R2-A** "Why" card
 - [ ] **R3-B** · [ ] **R3-A** Demo clock
 - [ ] **R4-B** · [ ] **R4-A** My medication screen

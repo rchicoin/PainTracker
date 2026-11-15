@@ -294,6 +294,8 @@ button:disabled { opacity: 0.55; cursor: default; }
 .confirm-note { color: var(--warn); }
 .confirm-row { display: flex; gap: 8px; }
 .confirm-row .btn-small { margin-left: 0; }
+.physio-row { align-items: center; font-weight: 600; }
+.physio-input { width: auto; margin: 0; }
 .btn-ghost { min-height: 42px; padding: 0 14px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); }
 
 /* Reply toast, bottom of screen (above the phone's home bar) */

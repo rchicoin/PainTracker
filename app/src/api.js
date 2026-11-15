@@ -16,6 +16,11 @@ async function request(url, options) {
   } catch {
     throw new Error(navigator.onLine ? "Can't reach PainTracker right now" : 'You seem to be offline')
   }
+  if (res.status === 400) {
+    // n8n explains what was wrong, e.g. "Physio time must be between 2 hours ago and 7 days ahead"
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.message || 'Please check what you entered')
+  }
   if (!res.ok) throw new Error(`Something went wrong on our side (error ${res.status})`)
   return res.json()
 }

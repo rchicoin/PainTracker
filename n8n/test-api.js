@@ -40,7 +40,7 @@ function postLog(body, weatherNow = { current: { temperature_2m: 8.1, pressure_m
   const type = check[0].json.type;
   const rowInput = type === "pain" ? [{ json: weatherNow }] : type === "dose" ? wrap(db.prescription) : [{ json: {} }];
   const row = runCode(codeOf(b4, `${type[0].toUpperCase()}${type.slice(1)} row`), out, rowInput)[0].json;
-  db[{ pain: "pain_log", dose: "doses", meal: "meals", walk: "walks" }[type]].push(row); // Insert node
+  db[{ pain: "pain_log", dose: "doses", meal: "meals", walk: "walks", physio: "schedule" }[type]].push(row); // Insert node
   Object.assign(out, tableOutputs(), weatherDown);
   out["Compute status"] = runCode(codeOf(b4, "Compute status"), out, []);
   out["Get predictions"] = wrap(db.predictions);
@@ -80,6 +80,16 @@ show("pain 5 (above goal: learn)", postLog({ patientId: "P001", type: "pain", sc
 show("pain 6 (same dose: already learned)", postLog({ patientId: "P001", type: "pain", score: 6 }));
 console.log(`patient_model after:  ${JSON.stringify(db.patient_model[0])}`);
 console.log(`predictions:          ${JSON.stringify(db.predictions)}`);
+
+// R1: physio appointment. A dose 30 min ago; physio in 1 h is within 2 h after it, so pain is back sooner.
+console.log("\n=== R1 physio ===");
+const inH = (h) => new Date(Date.now() + h * 3600000).toISOString();
+postLog({ patientId: "P001", type: "dose" });
+db.doses[db.doses.length - 1].time = inH(-0.5);
+show("physio in 1 h (moves the prediction)", postLog({ patientId: "P001", type: "physio", at: inH(1) }));
+show("physio tomorrow (no change)", postLog({ patientId: "P001", type: "physio", at: inH(26) }));
+show("bad: physio in 10 days", postLog({ patientId: "P001", type: "physio", at: inH(240) }));
+show("bad: physio without at", postLog({ patientId: "P001", type: "physio" }));
 
 // GET /dashboard
 const out6 = { Webhook: [{ json: { query: { patientId: "P001" } } }], ...tableOutputs(), ...weatherDown };

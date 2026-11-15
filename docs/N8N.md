@@ -28,8 +28,9 @@ Naming: `PainPal · B4 · /log`. Add a sticky note on each canvas: purpose · ow
 Sunday-morning refresh: `node data/generate.js` → `python ml/train.py` → `node n8n/build.js` → commit + push →
 wait ~5 min (GitHub caches raw files) → run Setup again → re-import B3 (new weights).
 
-## Physio schedule (seeded demo data)
-The `schedule` table holds physio appointments loaded by Setup from `n8n/seed/schedule.csv`. B4 /log and B6 /dashboard read it:
+## Physio schedule (seeded demo data + R1 entry in the app)
+The `schedule` table holds physio appointments loaded by Setup from `n8n/seed/schedule.csv`, plus any the patient
+adds in the app (R1: `/log` with `type: "physio"`). B4 /log and B6 /dashboard read it:
 a physio appointment within 2 h after a dose shortens the predicted relief (feature `physio_next_2h`, about −30 min),
 and the dashboard shows a physio heads-up. (A live Google Calendar sync was planned as B7 and dropped to keep it simple.)
 
@@ -68,12 +69,13 @@ sub-workflow ID. B3 stays as the sub-workflow for B7 and for testing. Local test
 **Trigger:** Webhook POST `/log` (Respond to Webhook; CORS set)
 
 1. **Code: Check request** → **IF** valid? (no → 400 `{ ok: false, message }`)
-2. **Switch** on `type`: pain / dose / meal / walk
+2. **Switch** on `type`: pain / dose / meal / walk / physio
 3. pain → **HTTP Request** Open-Meteo current weather (if down, saved without weather) → insert `pain_log`
 4. dose → get `prescription` → mg from the prescription (never from the app) → insert `doses`
-5. meal → insert `meals`; walk → insert `walks` (`km` empty for manual walks)
-6. Get tables → weather → **Compute status** (same as B3)
-7. **Code: Build reply**: message; `warning` if the dose was too early / over the 24 h max (+ 811 safety text) or pain ≥ 9
+5. meal → insert `meals`; walk → insert `walks` (`km` empty for manual walks);
+   physio (R1) → **Physio row** (`at` → 45 min appointment titled "Physio") → insert `schedule`
+6. Get tables → weather → **Compute status** (same as B3; for physio it also predicts *without* the new appointment → `before`)
+7. **Code: Build reply**: message (physio: "Pain likely back around 1:07 PM (was 1:39 PM)"); `warning` if the dose was too early / over the 24 h max (+ 811 safety text) or pain ≥ 9
 8. **Respond to Webhook** with `{ ok, message, warning, status }`
 
 ## B5: Personal learning (inside B4 /log, after Compute status)

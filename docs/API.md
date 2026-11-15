@@ -95,15 +95,17 @@ Response (Person A: use this as the **fake data** until n8n is live):
 
 ---
 
-## Round 2 (PROPOSED: agree together before building)
-Fake JSON below is for Person A to build against. Times are ISO 8601 with the Vancouver offset (currently `-07:00`).
+## Round 2 (AGREED Sun Nov 15)
+Fake JSON below is for Person A to build against. Times are ISO 8601 with an offset (the app sends the device's offset, e.g. `-08:00`).
 
 ### R1 · POST `/log` physio appointment
 ```json
 { "patientId": "P001", "type": "physio", "at": "2026-11-15T15:00:00-07:00" }
 ```
 - `at`: the appointment start; allowed from 2 h ago to 7 days ahead (otherwise 400).
-- Saved to the `schedule` table as "Physio". The prediction uses "physio within 2 h after the last dose".
+- Saved to the `schedule` table as "Physio" (45 min). The prediction uses "physio within 2 h after the last dose".
+- If the appointment doesn't change the prediction, the message says so: "Your current prediction stays at 1:07 PM (physio counts when it is within 2 h after a dose)."
+- Bad `at` → 400 `{ ok: false, message }`; the app shows the message. **Built (R1).**
 
 Response (same shape as other logs):
 ```json

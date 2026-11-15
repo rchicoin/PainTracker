@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { formatTime } from '../format.js'
+import { formatTime, toLocalIso } from '../format.js'
 
 const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snack']
 
@@ -9,6 +9,16 @@ export default function QuickActions({ onLog, busy, dash }) {
   const [showMeals, setShowMeals] = useState(false)
   const [confirmDose, setConfirmDose] = useState(false)
   const [walkMin, setWalkMin] = useState('')
+  const [showPhysio, setShowPhysio] = useState(false)
+  const [physioDay, setPhysioDay] = useState(0) // 0 = today, 1 = tomorrow
+  const [physioTime, setPhysioTime] = useState('15:00')
+
+  // R1: n8n saves the appointment and replies with how the prediction moved.
+  function logPhysio(e) {
+    e.preventDefault()
+    if (!physioTime) return
+    onLog({ type: 'physio', at: toLocalIso(physioDay, physioTime) }, () => setShowPhysio(false))
+  }
 
   function logWalk(e) {
     e.preventDefault()
@@ -69,6 +79,44 @@ export default function QuickActions({ onLog, busy, dash }) {
             </button>
           ))}
         </div>
+      )}
+
+      <button className="btn-quick" disabled={busy} onClick={() => setShowPhysio(!showPhysio)}>
+        🩺 Physio / appointment
+      </button>
+      {showPhysio && (
+        <form className="confirm" onSubmit={logPhysio}>
+          <div className="chips">
+            {['Today', 'Tomorrow'].map((label, i) => (
+              <button
+                key={label}
+                type="button"
+                className={`chip${physioDay === i ? ' chip-on' : ''}`}
+                aria-pressed={physioDay === i}
+                onClick={() => setPhysioDay(i)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="confirm-row physio-row">
+            <span>at</span>
+            <input
+              type="time"
+              className="text-input physio-input"
+              value={physioTime}
+              onChange={(e) => setPhysioTime(e.target.value)}
+              aria-label="Appointment time"
+              required
+            />
+            <button type="submit" className="btn-small" disabled={busy || !physioTime}>
+              Save
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => setShowPhysio(false)}>
+              Cancel
+            </button>
+          </div>
+        </form>
       )}
 
       <form className="walk-row" onSubmit={logWalk}>
