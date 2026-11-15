@@ -1,10 +1,9 @@
 # PainTracker
 PainTracker: a patient web app that learns your personal pain pattern and warns you before pain returns, always within your prescription limits. Built with React + Vite and powered by n8n workflows and a personalized ML model. Synthetic data only, not medical advice. UBC LOOP x n8n Buildathon 2026.
-# PainPal 🩹
 
 **Pain is personal, so your pain plan should be too.**
 
-PainPal is a patient web app that learns your personal pain pattern and gives you a heads-up *before* your pain comes back, always within your prescription limits.
+PainTracker is a patient web app that learns your personal pain pattern and gives you a heads-up *before* your pain comes back, always within your prescription limits.
 
 > ⚠️ **Hackathon demo. Synthetic data only. Not medical advice.** All patients and medications in this project ("Baselinol", "DemoRelief") are fictional.
 
@@ -16,7 +15,7 @@ Built for the **UBC LOOP × n8n Buildathon** (Nov 14–15, 2026), n8n track.
 
 Pain is individual and changes hour to hour. Prescriptions for "as needed" pain medication are written with fixed rules (e.g. "every 4 hours"), but they can't account for when *your* pain tends to return, what makes it worse (activity, weather, missed meals, time of day), or how this changes as you heal. Patients often wait in pain, and prescribers rarely see these patterns.
 
-## What PainPal does
+## What PainTracker does
 
 - 📝 **Quick logging:** pain score, medication taken, meals, and walks (tracked automatically while the app is open)
 - ⏱ **Prescription-aware status:** when your next dose is allowed and how much is left in the last 24 hours
@@ -49,7 +48,7 @@ React web app (PWA) ──► n8n webhooks ──► rules · patterns · predic
 ## Project structure
 
 ```
-painpal/
+paintracker/
 ├── app/    React + Vite web app
 ├── n8n/    exported n8n workflows (.json)
 ├── ml/     model training + exported weights
