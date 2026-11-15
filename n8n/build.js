@@ -360,8 +360,13 @@ const SAFETY = "Feeling very drowsy or confused? Don't take more. Call 811 or yo
 const next = s.doseAllowedNow ? 'A dose is allowed now.' : 'Your next dose is allowed at ' + clock(s.nextDoseAt) + '.';
 let message, warning = null;
 
+const L = $('B5: learn from last dose').first().json;
 if (c.type === 'pain') {
   message = 'Logged pain ' + c.body.score + '/10. ' + next;
+  if (L.learn) {
+    message += ' PainPal learned from your last dose: relief lasted ' + L.summary.actualHours.toFixed(1) +
+      ' h (predicted ' + L.summary.predictedHours.toFixed(1) + ' h).';
+  }
   if (Number(c.body.score) >= 9) warning = 'If pain is severe, new, or comes with other symptoms, contact your care team or call 811.';
 } else if (c.type === 'dose') {
   // check the dose just saved against the as-needed doses before it
@@ -384,7 +389,27 @@ if (c.type === 'pain') {
   const km = c.body.km === null || c.body.km === undefined ? '' : Number(c.body.km).toFixed(1) + ' km, ';
   message = 'Walk logged (' + km + Math.round(c.body.minutes) + ' min). ' + next;
 }
-return [{ json: { ok: true, message, warning, status: s.status } }];`;
+return [{ json: { ok: true, message, warning, status: s.status, learned: L.learn ? L.summary : null } }];`;
+
+const learnLogic = fs.readFileSync(path.join(__dirname, "code", "learn.js"), "utf8").replace(/\nif \(typeof module[^\n]*\n?/, "\n");
+const LEARN_CODE = `// Built by n8n/build.js from ml/predict.js + n8n/code/check-rules-and-predict.js + n8n/code/learn.js.
+const WEIGHTS = ${JSON.stringify(weights)};
+${helpers}
+${logic}
+${learnLogic}
+// ---------- run ----------
+const c = $('Check request').first().json;
+if (c.type !== 'pain') return [{ json: { learn: false, reason: 'not a pain log' } }];
+const rows = (node) => $(node).all().map((i) => i.json).filter((r) => r && Object.keys(r).length > 0);
+let weatherApi = null;
+try { weatherApi = $('Get weather (Open-Meteo)').first().json; } catch (e) { weatherApi = null; }
+const result = learnFromPain({
+  patientId: c.patientId, painTime: c.time, painScore: c.body.score, weights: WEIGHTS,
+  prescription: rows('Get prescription'), doses: rows('Get doses'), pain: rows('Get pain_log'), meals: rows('Get meals'),
+  walks: rows('Get walks'), schedule: rows('Get schedule'), patientModel: rows('Get patient_model'),
+  predictions: rows('Get predictions'), weatherApi,
+});
+return [{ json: result }];`;
 
 const switchRule = (type) => ({
   conditions: {
@@ -424,13 +449,26 @@ const switchRule = (type) => ({
   ];
   let sx4 = X(7);
   b4.push(...statusNodes("$('Check request').first().json", () => [(sx4 += 220) - 220, 300]));
-  b4.push(place(code("Build reply", BUILD_REPLY, "message + warning (too early / over 24 h max)"), [sx4, 300]));
-  b4.push(place(respond("Respond"), [sx4 + 220, 300]));
+  // B5: learn from the last dose when pain comes back above goal
+  b4.push(place({ parameters: { resource: "row", operation: "get", dataTableId: { __rl: true, mode: "name", value: "predictions" }, returnAll: true },
+    name: "Get predictions", type: "n8n-nodes-base.dataTable", typeVersion: 1, executeOnce: true, alwaysOutputData: true }, [sx4, 300]));
+  b4.push(place(code("B5: learn from last dose", LEARN_CODE, "pain above goal → real relief time → update personal offset"), [sx4 + 220, 300]));
+  b4.push(place(ifNode("Learned?", "learn", null), [sx4 + 440, 300]));
+  b4.push(place(code("Model row", "return [{ json: $('B5: learn from last dose').first().json.modelRow }];"), [sx4 + 660, 140]));
+  b4.push(place({ parameters: { resource: "row", operation: "update", dataTableId: { __rl: true, mode: "name", value: "patient_model" },
+    filters: { conditions: [{ keyName: "patientId", condition: "eq", keyValue: "={{ $json.patientId }}" }] },
+    columns: { mappingMode: "autoMapInputData", value: {}, matchingColumns: [], schema: [] }, options: {} },
+    name: "Update patient_model", type: "n8n-nodes-base.dataTable", typeVersion: 1 }, [sx4 + 880, 140]));
+  b4.push(place(code("Prediction row", "return [{ json: $('B5: learn from last dose').first().json.predictionRow }];"), [sx4 + 1100, 140]));
+  b4.push(place(insert("predictions"), [sx4 + 1320, 140]));
+  b4.push(place(code("Build reply", BUILD_REPLY, "message + warning (too early / over 24 h max) + what was learned"), [sx4 + 1540, 300]));
+  b4.push(place(respond("Respond"), [sx4 + 1760, 300]));
   b4.push(sticky("## PainPal · B4 · POST /log\nSaves pain / dose / meal / walk from the app, then re-checks prescription rules " +
     "and the prediction, and replies `{ ok, message, warning, status }` (docs/API.md).\n\n**Owner:** Person B · built by n8n/build.js\n" +
     "**Activate** the workflow so the app can use `/webhook/log`. CORS: Vercel app + localhost.", [-40, -300], 520, 240));
   const chainStart = tableNode(TABLES[0]);
-  const statusChain = [...TABLES.map(tableNode), "Get weather (Open-Meteo)", "Compute status", "Build reply", "Respond"];
+  const statusChain = [...TABLES.map(tableNode), "Get weather (Open-Meteo)", "Compute status", "Get predictions", "B5: learn from last dose", "Learned?"];
+  const learnChain = ["Model row", "Update patient_model", "Prediction row", "Insert predictions", "Build reply", "Respond"];
   const b4Conn = wire([
     ["Webhook", "Check request"], ["Check request", "Valid request?"],
     ["Valid request?", "Type?", 0], ["Valid request?", "Respond: bad request", 1],
@@ -440,6 +478,8 @@ const switchRule = (type) => ({
     ["Meal row", "Insert meals"], ["Walk row", "Insert walks"],
     ...["pain_log", "doses", "meals", "walks"].map((t) => [`Insert ${t}`, chainStart]),
     ...statusChain.slice(0, -1).map((n, i) => [n, statusChain[i + 1]]),
+    ["Learned?", "Model row", 0], ["Learned?", "Build reply", 1],
+    ...learnChain.slice(0, -1).map((n, i) => [n, learnChain[i + 1]]),
   ]);
   fs.writeFileSync(path.join(__dirname, "PainPal-B4-log.json"), JSON.stringify({
     name: "PainPal · B4 · POST /log", nodes: finish("b4", b4), connections: b4Conn, settings: { executionOrder: "v1" },

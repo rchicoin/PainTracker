@@ -76,13 +76,17 @@ sub-workflow ID. B3 stays as the sub-workflow for B7 and for testing. Local test
 7. **Code: Build reply**: message; `warning` if the dose was too early / over the 24 h max (+ 811 safety text) or pain ≥ 9
 8. **Respond to Webhook** with `{ ok, message, warning, status }`
 
-## B5: Personal learning (inside /log, pain branch)
-When a pain log is **above goal** and there's a dose before it with no `actualHours` yet:
-1. actualHours = pain time − dose time (skip if > 8 h or a big logging gap)
-2. error = actual − predicted
+## B5: Personal learning (inside B4 /log, after Compute status)
+Code: `n8n/code/learn.js` (node **B5: learn from last dose**). When a pain log is **above goal** and the last as-needed dose
+has no row in `predictions` yet:
+1. actualHours = first pain log above goal after the dose − dose time (skip if < 15 min or > 8 h)
+2. predicted = model + current offset, using the features at the dose (weather from Open-Meteo hourly)
 3. `offsetHours = 0.7 × offsetHours + 0.3 × (actual − globalPrediction)`; `dosesLearned += 1`
-4. Update `patient_model` and `predictions`
-This is the "keeps learning from each patient" part. Show it in the video.
+4. **IF** Learned? → **Update** `patient_model` (where patientId = …) → **Insert** `predictions` (predicted, actual, error)
+5. Reply adds "PainPal learned from your last dose: relief lasted 2.5 h (predicted 3.2 h)." and `learned: {…}`
+
+Each dose is learned from once. This is the "keeps learning from each patient" part. Show it in the video:
+log a dose → later log pain above goal → the reply says what it learned → dashboard "Learned from N doses" goes up.
 
 ## B6: /dashboard
 Webhook GET `/dashboard?patientId=P001` (optional `&now=ISO` for demo mode) → Get tables → weather → **Compute status** → Respond with the dashboard JSON.

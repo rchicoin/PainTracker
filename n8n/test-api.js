@@ -16,6 +16,7 @@ function readCsv(file) {
 }
 const TABLES = ["prescription", "doses", "pain_log", "meals", "walks", "schedule", "patient_model"];
 const db = Object.fromEntries(TABLES.map((t) => [t, readCsv(path.join(__dirname, "seed", `${t}.csv`))]));
+db.predictions = [];
 
 function runCode(code, outputs, input) {
   const items = (name) => {
@@ -42,6 +43,14 @@ function postLog(body, weatherNow = { current: { temperature_2m: 8.1, pressure_m
   db[{ pain: "pain_log", dose: "doses", meal: "meals", walk: "walks" }[type]].push(row); // Insert node
   Object.assign(out, tableOutputs(), weatherDown);
   out["Compute status"] = runCode(codeOf(b4, "Compute status"), out, []);
+  out["Get predictions"] = wrap(db.predictions);
+  out["B5: learn from last dose"] = runCode(codeOf(b4, "B5: learn from last dose"), out, []);
+  const learned = out["B5: learn from last dose"][0].json;
+  if (learned.learn) { // Update patient_model + Insert predictions nodes
+    const modelRow = runCode(codeOf(b4, "Model row"), out, [])[0].json;
+    db.patient_model = db.patient_model.map((r) => (r.patientId === modelRow.patientId ? { ...r, ...modelRow } : r));
+    db.predictions.push(runCode(codeOf(b4, "Prediction row"), out, [])[0].json);
+  }
   const reply = runCode(codeOf(b4, "Build reply"), out, out["Compute status"]);
   return { status: 200, body: reply[0].json, row };
 }
@@ -58,6 +67,19 @@ show("pain, weather API down", postLog({ patientId: "P001", type: "pain", score:
 show("bad: score 11", postLog({ patientId: "P001", type: "pain", score: 11 }));
 show("bad: unknown type", postLog({ patientId: "P001", type: "sleep" }));
 show("bad: walk without minutes", postLog({ patientId: "P001", type: "walk", km: 1 }));
+
+// B5 learning: a dose 2.5 h ago, then pain comes back above goal (3)
+console.log("\n=== B5 learning ===");
+db.doses = db.doses.filter((d) => Date.now() - new Date(d.time) > 120000); // drop the test doses from above
+db.pain_log = db.pain_log.filter((p) => Date.now() - new Date(p.time) > 120000);
+console.log(`patient_model before: ${JSON.stringify(db.patient_model[0])}`);
+postLog({ patientId: "P001", type: "dose" });
+db.doses[db.doses.length - 1].time = new Date(Date.now() - 2.5 * 3600000).toISOString(); // pretend it was 2.5 h ago
+show("pain 2 (at/below goal: nothing to learn)", postLog({ patientId: "P001", type: "pain", score: 2 }));
+show("pain 5 (above goal: learn)", postLog({ patientId: "P001", type: "pain", score: 5 }));
+show("pain 6 (same dose: already learned)", postLog({ patientId: "P001", type: "pain", score: 6 }));
+console.log(`patient_model after:  ${JSON.stringify(db.patient_model[0])}`);
+console.log(`predictions:          ${JSON.stringify(db.predictions)}`);
 
 // GET /dashboard
 const out6 = { Webhook: [{ json: { query: { patientId: "P001" } } }], ...tableOutputs(), ...weatherDown };
