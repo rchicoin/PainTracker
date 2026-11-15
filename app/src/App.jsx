@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { USING_FAKE_DATA, getDashboard, logEntry } from './api.js'
 import { formatTime } from './format.js'
 import MyStatus from './components/MyStatus.jsx'
@@ -15,13 +15,19 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [reply, setReply] = useState(null)
   const [error, setError] = useState(null)
+  const [prev, setPrev] = useState(null) // dashboard before the last log, for highlighting changes
+  const prevTimer = useRef(null)
+  const statusRef = useRef(null)
 
   async function loadDashboard() {
     try {
-      setDash(await getDashboard())
+      const fresh = await getDashboard()
+      setDash(fresh)
       setDashError(null)
+      return fresh
     } catch (err) {
       setDashError(err.message)
+      return null
     }
   }
 
@@ -31,15 +37,21 @@ export default function App() {
       .catch((err) => setDashError(err.message))
   }, [])
 
-  // Send any entry to n8n, show its reply, then refresh the dashboard.
-  // `onDone` lets a form reset itself.
+  // Send any entry to n8n, show its reply, then refresh the dashboard and
+  // highlight what changed for 20 s. `onDone` lets a form reset itself.
   async function handleLog(entry, onDone) {
+    const before = dash
     setBusy(true)
     setError(null)
     try {
       setReply(await logEntry(entry))
       onDone?.()
-      loadDashboard()
+      const fresh = await loadDashboard()
+      if (fresh && before) {
+        setPrev(before)
+        clearTimeout(prevTimer.current)
+        prevTimer.current = setTimeout(() => setPrev(null), 20000)
+      }
     } catch (err) {
       setReply(null)
       setError(err.message)
@@ -47,6 +59,10 @@ export default function App() {
       setBusy(false)
     }
   }
+
+  const showChanges = useCallback(() => {
+    statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
 
   const closeReply = useCallback(() => {
     setReply(null)
@@ -60,7 +76,7 @@ export default function App() {
 
   return (
     <>
-      <div className="banner">DEMO · synthetic data and fictional medicines · NOT MEDICAL ADVICE</div>
+      <div className="banner">DEMO · synthetic data · NOT MEDICAL ADVICE</div>
 
       <div className="app">
         <header className="header">
@@ -81,7 +97,7 @@ export default function App() {
             </div>
           )}
           {!dash && !dashError && <div className="card muted">Loading your dashboard…</div>}
-          {dash && <MyStatus data={dash} />}
+          <div ref={statusRef} className="scroll-anchor">{dash && <MyStatus data={dash} prev={prev} />}</div>
 
           <div className="two-col-wide">
             <PainForm onLog={handleLog} busy={busy} />
@@ -106,7 +122,7 @@ export default function App() {
         </footer>
       </div>
 
-      <Reply reply={reply} error={error} onClose={closeReply} />
+      <Reply reply={reply} error={error} onClose={closeReply} onShow={prev ? showChanges : null} />
     </>
   )
 }

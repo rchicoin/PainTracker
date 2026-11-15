@@ -8,7 +8,7 @@ import { formatTime } from '../format.js'
 const H24 = 24 * 60 * 60 * 1000
 const y = (score) => 92 - score * 8.4 // 0 → 92, 10 → 8
 
-export default function PainChart({ now, chart, doses, walks, goal }) {
+export default function PainChart({ now, chart, doses, walks, goal, prev }) {
   const [hover, setHover] = useState(null)
 
   const end = new Date(now).getTime()
@@ -17,6 +17,11 @@ export default function PainChart({ now, chart, doses, walks, goal }) {
 
   const points = chart.filter((p) => new Date(p.time).getTime() >= start)
   const line = points.map((p) => `${x(p.time)},${y(p.score)}`).join(' ')
+
+  // Highlight what's new since the previous dashboard (after a log).
+  const oldTimes = new Set((prev?.chart ?? []).map((p) => p.time))
+  const newPoints = prev ? points.filter((p) => !oldTimes.has(p.time)) : []
+  const oldDoses = new Set(prev?.doses ?? [])
 
   function onMove(e) {
     const box = e.currentTarget.getBoundingClientRect()
@@ -42,7 +47,14 @@ export default function PainChart({ now, chart, doses, walks, goal }) {
           <rect x="0" y={y(10)} width="100" height={y(goal) - y(10)} className="c-zone" />
           {/* doses */}
           {doses.map((d) => (
-            <line key={d} x1={x(d)} x2={x(d)} y1="4" y2="96" className="c-dose" />
+            <line
+              key={d}
+              x1={x(d)}
+              x2={x(d)}
+              y1="4"
+              y2="96"
+              className={`c-dose ${prev && !oldDoses.has(d) ? 'c-dose-new' : ''}`}
+            />
           ))}
           {/* goal */}
           <line x1="0" x2="100" y1={y(goal)} y2={y(goal)} className="c-goal" />
@@ -59,6 +71,15 @@ export default function PainChart({ now, chart, doses, walks, goal }) {
         <span className="chart-goal-label" style={{ top: `${y(goal)}%` }}>
           goal {goal}
         </span>
+
+        {newPoints.map((p) => (
+          <span
+            key={p.time}
+            className="chart-new"
+            style={{ left: `${x(p.time)}%`, top: `${y(p.score)}%` }}
+            title={`New: ${p.score}/10 at ${formatTime(p.time)}`}
+          />
+        ))}
 
         {hover && (
           <>
