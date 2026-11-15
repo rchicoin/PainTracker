@@ -89,7 +89,7 @@ Ordered by demo value. **If time runs short, cut from the bottom.** Items 1 + 2 
 - [x] Regenerate demo data so "last 24 h" looks live (Sunday morning)
 - [ ] Record demo video (≤ 3 min): **final script + n8n clip list + Clipchamp steps in `docs/DEMO.md`**
   - [x] App recording done (live run ~11:56 AM, `painpal-demo-full.webm` on Reagan's laptop)
-  - [ ] Part 2: n8n recording (5 shots) · [ ] voiceover · [ ] edit + export + upload
+  - [x] Part 2: n8n recording (`painpal-n8n.mp4`, 30 s, script in `docs/DEMO.md`) · [ ] voiceover · [ ] edit + export + upload
 - [ ] README: screenshots, setup, disclosures, team
 - [ ] Devpost page + disclosure list
 - [ ] Final push before 2:30 PM
