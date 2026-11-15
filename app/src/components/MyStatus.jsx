@@ -47,6 +47,7 @@ export default function MyStatus({ data, prev }) {
         walks={data.walks}
         goal={patient.goal}
         prev={prev}
+        forecast={data.forecast}
       />
 
       <div className="two-col">

@@ -80,6 +80,13 @@ const FAKE_DASHBOARD = {
     { label: 'Walked 1.2 km before the dose', minutes: -20 },
     { label: 'Your personal pattern', minutes: 14 },
   ],
+  // R5 (docs/API.md)
+  forecast: [
+    { time: '2026-11-15T08:00:00-08:00', score: 5 },
+    { time: '2026-11-15T08:45:00-08:00', score: 2 },
+    { time: '2026-11-15T13:10:00-08:00', score: 3 },
+    { time: '2026-11-15T13:40:00-08:00', score: 4 },
+  ],
 }
 
 const fakeDelay = () => new Promise((r) => setTimeout(r, 400))

@@ -143,7 +143,7 @@ export default function App() {
         </main>
 
         <footer className="footer">
-          Chart: blue = your pain (last 24 h), dashed green = your comfort goal, purple lines = doses
+          Chart: blue = your pain (last 24 h), dashed green = your comfort goal, dashed blue = expected pain after your last dose, purple lines = doses
           you took, marks at the bottom = walks. Predictions only change <em>when</em> you get a
           heads-up. Your dose, timing and daily max always come from your prescription.
           <br />

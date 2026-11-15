@@ -142,6 +142,8 @@ Response (same shape as other logs):
   Labels: time of day ("Evening (6–10 PM)" etc.), "Pain was 6/10 at your dose", "Walked 1.2 km before the dose" / "No walk before the dose",
   "Physio soon after your dose", "Ate 45 min before the dose", "Daily medicine 2.5 h before", "Weather (pressure, rain, temperature)".
 - `forecast`: expected pain from the last dose to `painLikelyBackAt` (dose → relief → back above goal). Draw it dashed.
+  Shape: pain at the dose → goal − 1 about 45 min later → goal 30 min before → goal + 1 at `painLikelyBackAt`.
+  Empty if there's no dose in the last 24 h. **Built (R5).**
 - `upcoming`: future physio appointments (next 7 days). **Built (R2-B).**
 - `demo`: present only when the demo clock is shifted. Show "Demo time" whenever `active` is true.
 

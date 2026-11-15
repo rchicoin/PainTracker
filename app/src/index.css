@@ -129,6 +129,12 @@ button:disabled { opacity: 0.55; cursor: default; }
 .c-pain { fill: none; stroke: var(--pain); stroke-width: 2; stroke-linejoin: round; }
 .c-walk { stroke: var(--goal); stroke-width: 3; }
 .c-cross { stroke: var(--muted); stroke-width: 1; opacity: 0.5; }
+/* R5: forecast (dashed, same blue as pain) + now marker */
+.c-forecast { fill: none; stroke: var(--pain); stroke-width: 2; stroke-dasharray: 4 4; stroke-linejoin: round; }
+.c-forecast-old { opacity: 0.3; }
+.c-now { stroke: var(--text); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.6; }
+.chart-now-label { position: absolute; top: -16px; transform: translateX(-50%); font-size: 0.7rem; color: var(--muted); }
+.chart-forecast-note { margin: 4px 24px 0; }
 
 .chart-goal-label {
   position: absolute;

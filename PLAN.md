@@ -73,7 +73,7 @@ Ordered by demo value. **If time runs short, cut from the bottom.** Items 1 + 2 
 - [x] **R2-B** · [x] **R2-A** "Why" card
 - [x] **R3-B** · [x] **R3-A** Demo clock (both built by B; import R3 + re-import B4, B6)
 - [x] **R4-B** · [x] **R4-A** My medication screen (both built by B; import R4)
-- [ ] **R5-B** · [ ] **R5-A** Forecast line
+- [x] **R5-B** · [x] **R5-A** Forecast line (both built by B; re-import B6)
 - [ ] Data refresh + re-import Setup/B4/B6 + full phone test (together, 8:30–10 AM)
 
 **Fallbacks**

@@ -129,6 +129,24 @@ function checkRulesAndPredict({ patientId, now, weights, prescription, doses, pa
       `Your next dose is allowed ${doseAllowedNow ? "now" : "at " + clock(nextDoseAt)}.`);
   }
 
+  // ---------- R5: forecast line (last dose -> relief -> pain likely back) ----------
+  // A simple shape around the model's prediction: pain at the dose, lowest ~45 min later (goal - 1),
+  // still at the goal 30 min before "pain likely back", then just above the goal. Only for a dose in the last 24 h.
+  let forecast = [];
+  if (prediction && NOW - lastDoseAt <= 24 * H) {
+    const t0 = lastDoseAt, t1 = new Date(prediction.painLikelyBackAt).getTime();
+    const atDose = isNum(prediction.features.pain_at_dose) ? Number(prediction.features.pain_at_dose) : Math.min(10, goal + 2);
+    const lowAt = t0 + Math.min(45 * 60000, (t1 - t0) * 0.4);
+    const goalAt = Math.max(lowAt, t1 - 30 * 60000);
+    const at = (t) => localIso(new Date(Math.round(t / 60000) * 60000));
+    forecast = [
+      { time: at(t0), score: atDose },
+      { time: at(lowAt), score: Math.max(0, goal - 1) },
+      ...(goalAt > lowAt ? [{ time: at(goalAt), score: goal }] : []),
+      { time: at(t1), score: Math.min(10, goal + 1) },
+    ];
+  }
+
   // ---------- R2: why + upcoming ----------
   const why = prediction ? explainPrediction(weights, prediction.features, model.offsetHours, new Date(lastDoseAt)) : [];
   const upcoming = calendar
@@ -166,6 +184,7 @@ function checkRulesAndPredict({ patientId, now, weights, prescription, doses, pa
     },
     why,
     upcoming,
+    forecast,
     status,
     prediction,
   };

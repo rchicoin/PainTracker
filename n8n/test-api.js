@@ -113,12 +113,13 @@ function postClock(body) {
 }
 const dash = getDashboard();
 const need = ["patient", "now", "painNow", "nextDoseAt", "doseAllowedNow", "mgUsed24h", "mgMax24h", "reliefHours",
-  "painLikelyBackAt", "chart", "doses", "walks", "patterns", "headsUps", "model", "why", "upcoming"];
+  "painLikelyBackAt", "chart", "doses", "walks", "patterns", "headsUps", "model", "why", "upcoming", "forecast"];
 console.log(`\nGET /dashboard -> missing API fields: ${need.filter((k) => !(k in dash)).join(", ") || "none"}`);
 console.log(`  painNow ${JSON.stringify(dash.painNow)}, mgUsed24h ${dash.mgUsed24h}/${dash.mgMax24h}, walks ${JSON.stringify(dash.walks)}`);
 console.log(`  headsUps ${JSON.stringify(dash.headsUps)}`);
 console.log(`  why ${JSON.stringify(dash.why)}`);
 console.log(`  upcoming ${JSON.stringify(dash.upcoming)}`);
+console.log(`  forecast ${JSON.stringify(dash.forecast)} (painLikelyBackAt ${dash.painLikelyBackAt})`);
 // R2: the "why" minutes + an average dose add up to the prediction (Ridge is linear; small rounding is fine)
 const W = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "ml", "weights.json"), "utf8"));
 const p = dash.prediction, shown = dash.why.reduce((s, w) => s + w.minutes, 0);
