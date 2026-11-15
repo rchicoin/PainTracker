@@ -51,7 +51,7 @@ Fill in names: A = ________  B = Reagan
 - [x] **B4** Workflow **/log**
 - [x] **B5** Personal learning: update patient offset after each completed dose
 - [x] **B6** Workflow **/dashboard**
-- [ ] **B7** Workflow **Google Calendar sync**: physio appointments → `schedule` table → used by the prediction
+- ~~**B7** Heads-ups / Google Calendar sync~~ (dropped to keep it simple; heads-ups show in the app)
 - ~~**B8** Weekly summary~~ (dropped to keep it simple)
 - [x] **B9** Workflows exported to `n8n/` (built by `node n8n/build.js`); error-alert emails dropped
 

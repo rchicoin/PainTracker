@@ -13,7 +13,7 @@ Naming: `PainPal · B4 · /log`. Add a sticky note on each canvas: purpose · ow
 | `doses` | patientId, time, mg, drug, kind (`as-needed` = DemoRelief, counts toward limits; `scheduled` = Baselinol) |
 | `meals` | patientId, time, meal |
 | `walks` | patientId, time, km (**empty for manual walks**), minutes, source (`auto`/`manual`) |
-| `schedule` | patientId, start, end, title (calendar events, e.g. "Physio session"; synced from Google Calendar) |
+| `schedule` | patientId, start, end, title (calendar events, e.g. "Physio session"; seeded demo data) |
 | `patient_model` | patientId, offsetHours, dosesLearned, lastUpdated |
 | `predictions` | patientId, doseTime, predictedHours, actualHours (filled later), error |
 
@@ -28,16 +28,10 @@ Naming: `PainPal · B4 · /log`. Add a sticky note on each canvas: purpose · ow
 Sunday-morning refresh: `node data/generate.js` → `python ml/train.py` → `node n8n/build.js` → commit + push →
 wait ~5 min (GitHub caches raw files) → run Setup again → re-import B3 (new weights).
 
-## B7: Google Calendar sync → `schedule` (physio feeds the prediction) (`PainPal-Calendar-sync.json`)
-Import from URL → open **Google Calendar: physio events** → Credential → Create new → Sign in with Google → **Save** → **Publish**.
-
-Every 30 min (or **Sync now**) → **Google Calendar: Get many events** (primary calendar, "physio", yesterday → next 7 days) →
-Get `schedule` → **Code: New physio events** (physio only, skips ones already saved; all-day events = 9 AM) → Insert `schedule`.
-
-B4 /log and B6 /dashboard read `schedule`: a physio appointment within 2 h after a dose shortens the predicted relief
-(feature `physio_next_2h`, about −30 min), and the dashboard shows "Physio at 2:00 PM (from your calendar)…".
-Works with the seeded events even before Calendar is connected. Test: `node n8n/test-calendar.js`.
-Demo: add "Physio" to Google Calendar ~1 h from now → **Sync now** → log a dose in the app → the prediction is earlier and the heads-up appears.
+## Physio schedule (seeded demo data)
+The `schedule` table holds physio appointments loaded by Setup from `n8n/seed/schedule.csv`. B4 /log and B6 /dashboard read it:
+a physio appointment within 2 h after a dose shortens the predicted relief (feature `physio_next_2h`, about −30 min),
+and the dashboard shows a physio heads-up. (A live Google Calendar sync was planned as B7 and dropped to keep it simple.)
 
 ---
 
@@ -98,8 +92,8 @@ log a dose → later log pain above goal → the reply says what it learned → 
 Webhook GET `/dashboard?patientId=P001` (optional `&now=ISO` for demo mode) → Get tables → weather → **Compute status** → Respond with the dashboard JSON.
 
 ## Dropped to keep it simple
-No emails: heads-ups are shown in the app (`headsUps` from /dashboard). The weekly AI summary (B8) and error-alert
-emails (B9) were removed from the plan.
+No emails: heads-ups are shown in the app (`headsUps` from /dashboard). Removed from the plan: heads-up emails and
+Google Calendar sync (B7), the weekly AI summary (B8), and error-alert emails (B9).
 
 ## Export
 The repo is the source: `node n8n/build.js` writes every workflow in `n8n/` from `ml/` + `n8n/code/`, and they are imported by URL.

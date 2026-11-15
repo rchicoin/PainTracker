@@ -27,7 +27,7 @@ Unknown values (manual walk with no km, no weather, no step counter) are filled 
 | walk_km_prev_3h | walks | km walked in the 3 h before the dose (manual walks: minutes ÷ 16) |
 | walk_min_prev_3h | walks | minutes walked in the 3 h before the dose |
 | steps_prev_3h | steps | steps in the 3 h before the dose (no step counter in the app yet: 750 + 1300 × km) |
-| physio_next_2h | Google Calendar | 1 if a physio event starts within 2 h after the dose |
+| physio_next_2h | schedule table | 1 if a physio appointment starts within 2 h after the dose |
 | hours_since_scheduled_med | medications | late/missed scheduled medication (capped at 12) |
 | hours_since_meal | meals | skipped meals (capped at 12) |
 | pressure_change_6h | weather | change in air pressure over 6 h (falling = negative) |

@@ -16,7 +16,7 @@ patient's prescription limits. Entering the n8n track: n8n must do the real work
 - `app/`: React + Vite web app (PWA). ONLY displays data and collects input. No business
   logic (no rule checks, no predictions in React). API calls go in `app/src/api.js`.
 - n8n Cloud (`team17.app.n8n.cloud`) does ALL logic: saving data, prescription rules,
-  patterns, prediction, learning, heads-ups (shown in the app), Google Calendar physio sync. No emails.
+  patterns, prediction, learning, heads-ups (shown in the app). No emails.
 - `data/`: synthetic dataset (fictional patients; fictional drugs "Baselinol", "DemoRelief").
 - `ml/`: scikit-learn training → `ml/weights.json`; JS prediction helpers for n8n Code nodes.
 - `n8n/`: exported n8n workflow JSON files.
