@@ -45,9 +45,9 @@ Fill in names: A = ________  B = Reagan
 - [ ] **A8** Polish: loading states, error messages, safety text, mobile layout
 
 ### Person B: Brain
-- [ ] **B1** Pick one demo patient from `data/`; create n8n Data Tables (or Google Sheets) and load their history
+- [x] **B1** Pick one demo patient from `data/`; create n8n Data Tables (or Google Sheets) and load their history
 - [x] **B2** Train Ridge model (`ml/train.py`) → `ml/weights.json` + accuracy numbers for Devpost
-- [ ] **B3** Sub-workflow **Check rules & predict** (`docs/N8N.md`)
+- [x] **B3** Sub-workflow **Check rules & predict** (`docs/N8N.md`)
 - [ ] **B4** Workflow **/log**
 - [ ] **B5** Personal learning: update patient offset after each completed dose
 - [ ] **B6** Workflow **/dashboard**
