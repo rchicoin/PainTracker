@@ -59,6 +59,7 @@ The Get nodes find their tables by name, so nothing to select. Click **Execute w
 For each URL: **Create workflow** → **⋯** → **Import from URL** → **Save** → switch **Active** on (top right).
 - B4: `https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/PainPal-B4-log.json`
 - B6: `https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/PainPal-B6-dashboard.json`
+- R3: `https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/PainPal-R3-demo-clock.json` (demo clock)
 
 Then the app uses `VITE_N8N_URL=https://team17.app.n8n.cloud/webhook` (set it in Vercel → Settings → Environment Variables, then redeploy).
 CORS allows `https://pain-tracker-rosy.vercel.app` and `http://localhost:5173`.
@@ -68,6 +69,7 @@ sub-workflow ID. B3 stays as the sub-workflow for B7 and for testing. Local test
 ## B4: /log
 **Trigger:** Webhook POST `/log` (Respond to Webhook; CORS set)
 
+0. **Get demo_clock** (R3; missing table/row = real time) → "now" = real time + offset
 1. **Code: Check request** → **IF** valid? (no → 400 `{ ok: false, message }`)
 2. **Switch** on `type`: pain / dose / meal / walk / physio
 3. pain → **HTTP Request** Open-Meteo current weather (if down, saved without weather) → insert `pain_log`
@@ -77,6 +79,12 @@ sub-workflow ID. B3 stays as the sub-workflow for B7 and for testing. Local test
 6. Get tables → weather → **Compute status** (same as B3; for physio it also predicts *without* the new appointment → `before`)
 7. **Code: Build reply**: message (physio: "Pain likely back around 1:07 PM (was 1:39 PM)"); `warning` if the dose was too early / over the 24 h max (+ 811 safety text) or pain ≥ 9
 8. **Respond to Webhook** with `{ ok, message, warning, status }`
+
+## R3: POST /demo-clock (demo only)
+Webhook → **Check request** (`{ advanceMinutes: 1–1440 }` or `{ reset: true }`, else 400) → **Create demo_clock (if missing)** →
+**Get demo_clock** → **New offset** (old + advance, max 7 days; reset = 0) → **IF** row exists? → Update / Insert →
+reply `{ ok, now, offsetMin }`. B4 and B6 start with **Get demo_clock** and use real time + offset as "now";
+/dashboard returns `demo: { active, offsetMin }` while shifted. The app shows an amber "Demo time" bar.
 
 ## B5: Personal learning (inside B4 /log, after Compute status)
 Code: `n8n/code/learn.js` (node **B5: learn from last dose**). When a pain log is **above goal** and the last as-needed dose

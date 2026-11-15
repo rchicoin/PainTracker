@@ -153,6 +153,9 @@ Response (same shape as other logs):
 Response: `{ "ok": true, "now": "2026-11-15T16:40:00-07:00", "offsetMin": 120 }`
 - While shifted, `/log` saves entries at the demo time and `/dashboard` uses it for "now". Reset goes back to the real time.
 - **Demo only:** the app must label it clearly ("Demo time"), never hide it.
+- `advanceMinutes`: whole number 1–1440 (else 400). Total offset is capped at 7 days. Stored in the `demo_clock` table.
+- After a reset, entries logged at a demo time later than the real time stay hidden until real time catches up
+  (the Sunday data refresh clears them). **Built (R3).**
 
 ### R4 · POST `/prescription` (one as-needed medication)
 ```json

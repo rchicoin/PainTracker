@@ -6,6 +6,7 @@ const path = require("path");
 const load = (f) => JSON.parse(fs.readFileSync(path.join(__dirname, f), "utf8"));
 const b4 = load("PainPal-B4-log.json");
 const b6 = load("PainPal-B6-dashboard.json");
+const r3 = load("PainPal-R3-demo-clock.json");
 const codeOf = (wf, name) => wf.nodes.find((n) => n.name === name).parameters.jsCode;
 
 function readCsv(file) {
@@ -17,6 +18,7 @@ function readCsv(file) {
 const TABLES = ["prescription", "doses", "pain_log", "meals", "walks", "schedule", "patient_model"];
 const db = Object.fromEntries(TABLES.map((t) => [t, readCsv(path.join(__dirname, "seed", `${t}.csv`))]));
 db.predictions = [];
+db.demo_clock = []; // R3: empty = real time
 
 function runCode(code, outputs, input) {
   const items = (name) => {
@@ -34,7 +36,7 @@ const weatherDown = { "Get weather (Open-Meteo)": [{ json: { error: "timeout" } 
 // Simulates POST /log through the workflow: check -> row -> insert -> compute status -> reply
 function postLog(body, weatherNow = { current: { temperature_2m: 8.1, pressure_msl: 1004.2, precipitation: 0.4 } }) {
   const webhookItem = [{ json: { body } }];
-  const check = runCode(codeOf(b4, "Check request"), {}, webhookItem);
+  const check = runCode(codeOf(b4, "Check request"), { Webhook: webhookItem, "Get demo_clock": wrap(db.demo_clock) }, []);
   if (!check[0].json.valid) return { status: 400, body: { ok: false, message: check[0].json.error } };
   const out = { "Check request": check };
   const type = check[0].json.type;
@@ -92,8 +94,24 @@ show("bad: physio in 10 days", postLog({ patientId: "P001", type: "physio", at: 
 show("bad: physio without at", postLog({ patientId: "P001", type: "physio" }));
 
 // GET /dashboard
-const out6 = { Webhook: [{ json: { query: { patientId: "P001" } } }], ...tableOutputs(), ...weatherDown };
-const dash = runCode(codeOf(b6, "Compute status"), out6, [])[0].json;
+function getDashboard() {
+  const out = { Webhook: [{ json: { query: { patientId: "P001" } } }], "Get demo_clock": wrap(db.demo_clock), ...tableOutputs(), ...weatherDown };
+  out["Demo time"] = runCode(codeOf(b6, "Demo time"), out, []);
+  return runCode(codeOf(b6, "Compute status"), out, [])[0].json;
+}
+// R3: simulates POST /demo-clock through its workflow (check -> get -> new offset -> update/insert -> reply)
+function postClock(body) {
+  const out = { Webhook: [{ json: { body } }] };
+  out["Check request"] = runCode(codeOf(r3, "Check request"), out, out.Webhook);
+  if (!out["Check request"][0].json.valid) return { status: 400, body: { ok: false, message: out["Check request"][0].json.error } };
+  out["Get demo_clock"] = wrap(db.demo_clock);
+  out["New offset"] = runCode(codeOf(r3, "New offset"), out, []);
+  const n = out["New offset"][0].json;
+  const row = runCode(codeOf(r3, n.exists ? "Row to update" : "Row to insert"), out, [])[0].json;
+  db.demo_clock = [...db.demo_clock.filter((r) => r.patientId !== row.patientId), row];
+  return { status: 200, body: runCode(codeOf(r3, "Build reply"), out, [])[0].json };
+}
+const dash = getDashboard();
 const need = ["patient", "now", "painNow", "nextDoseAt", "doseAllowedNow", "mgUsed24h", "mgMax24h", "reliefHours",
   "painLikelyBackAt", "chart", "doses", "walks", "patterns", "headsUps", "model", "why", "upcoming"];
 console.log(`\nGET /dashboard -> missing API fields: ${need.filter((k) => !(k in dash)).join(", ") || "none"}`);
@@ -107,3 +125,18 @@ const p = dash.prediction, shown = dash.why.reduce((s, w) => s + w.minutes, 0);
 console.log(`  why check: average ${Math.round(W.intercept * 60)} min ${shown >= 0 ? "+" : ""}${shown} = ${Math.round(W.intercept * 60) + shown} min ` +
   `vs predicted ${Math.round(p.predictedHours * 60)} min (effects under 3 min and beyond the top 4 are left out)`);
 console.log(`  has "Physio soon after your dose": ${dash.why.some((w) => w.label === "Physio soon after your dose")}`);
+
+// ---------- R3: demo clock ----------
+console.log("\n=== R3 demo clock ===");
+show("bad: advance 0", postClock({ advanceMinutes: 0 }));
+show("bad: empty body", postClock({}));
+const realNow = getDashboard().now;
+show("+60 min", postClock({ advanceMinutes: 60 }));
+show("+60 min again", postClock({ advanceMinutes: 60 }));
+const d2 = getDashboard();
+console.log(`  dashboard now ${realNow} -> ${d2.now}, demo ${JSON.stringify(d2.demo)}`);
+const logged = postLog({ patientId: "P001", type: "pain", score: 5 });
+console.log(`  pain log saved at demo time: ${logged.row.time} (dashboard now ${d2.now})`);
+show("reset", postClock({ reset: true }));
+const d3 = getDashboard();
+console.log(`  after reset: now ${d3.now}, demo field present: ${"demo" in d3}`);

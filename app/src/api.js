@@ -103,6 +103,23 @@ export async function logEntry(entry) {
   })
 }
 
+// R3: POST /demo-clock with { advanceMinutes } or { reset: true }. Demo only; the app always shows "Demo time".
+let fakeOffsetMin = 0
+export async function setDemoClock(change) {
+  if (!BASE_URL) {
+    console.info('[fake] POST /demo-clock', change)
+    await fakeDelay()
+    fakeOffsetMin = change.reset ? 0 : fakeOffsetMin + change.advanceMinutes
+    return { ok: true, offsetMin: fakeOffsetMin }
+  }
+
+  return request(`${BASE_URL}/demo-clock`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ patientId: PATIENT_ID, ...change }),
+  })
+}
+
 // GET /dashboard
 export async function getDashboard() {
   if (!BASE_URL) {

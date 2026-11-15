@@ -78,6 +78,8 @@ const result = checkRulesAndPredict({
 ${TABLES.map((t) => `  ${{ pain_log: "pain", patient_model: "patientModel" }[t] || t}: rows('${tableNode(t)}'),`).join("\n")}
   weatherApi,
 });
+// R3: demo clock. Only present while the clock is shifted, so the app can label "Demo time".
+if (Number(input.demoOffsetMin)) result.demo = { active: true, offsetMin: Number(input.demoOffsetMin) };
 ${inputExpr.includes("Check request") ? `// R1: for a new physio appointment, also predict without it so /log can say how the prediction moved
 if (input.type === 'physio') {
   const at = new Date(input.body.at).getTime();
@@ -210,6 +212,7 @@ const SCHEMA = {
   schedule: { patientId: "string", start: "string", end: "string", title: "string" },
   patient_model: { patientId: "string", offsetHours: "number", dosesLearned: "number", lastUpdated: "string" },
   predictions: { patientId: "string", doseTime: "string", predictedHours: "number", actualHours: "number", error: "number" },
+  demo_clock: { patientId: "string", offsetMin: "number" }, // R3: minutes the demo clock is ahead of real time
 };
 const parseCode = (table) => `// CSV text -> one item per row, with numbers as numbers and empty cells as null
 const NUMBERS = ${JSON.stringify(Object.keys(SCHEMA[table]).filter((c) => SCHEMA[table][c] === "number"))};
@@ -246,7 +249,7 @@ for (const t of Object.keys(SCHEMA)) {
     name: `Create ${t}`, type: "n8n-nodes-base.dataTable", typeVersion: 1, position: sAt(400), executeOnce: true,
   });
 }
-for (const t of Object.keys(SCHEMA).filter((x) => x !== "predictions")) {
+for (const t of Object.keys(SCHEMA).filter((x) => !["predictions", "demo_clock"].includes(x))) {
   sNodes.push({
     parameters: { url: `${RAW}/${t}.csv`, options: { response: { response: { responseFormat: "text", outputPropertyName: "data" } } } },
     name: `Download ${t}.csv`, type: "n8n-nodes-base.httpRequest", typeVersion: 4.2, position: sAt(200), executeOnce: true,
@@ -286,7 +289,20 @@ console.log(`Setup:    ${path.relative(ROOT, setupFile)} (${sNodes.length} nodes
 
 // ---------- B4 (POST /log) and B6 (GET /dashboard) ----------
 const ORIGINS = "https://pain-tracker-rosy.vercel.app,http://localhost:5173";
-const WEBHOOK_VERSION = { log: 2, dashboard: 1 };
+const WEBHOOK_VERSION = { log: 2, dashboard: 1, "demo-clock": 1 };
+// R3: "Get demo_clock" node + code that reads the offset. A missing table or row means real time (offset 0).
+const getDemoClock = () => ({
+  parameters: { resource: "row", operation: "get", dataTableId: { __rl: true, mode: "name", value: "demo_clock" }, returnAll: true },
+  name: "Get demo_clock", type: "n8n-nodes-base.dataTable", typeVersion: 1,
+  executeOnce: true, alwaysOutputData: true, onError: "continueRegularOutput",
+  notes: "R3 demo clock (empty = real time)", notesInFlow: true,
+});
+const DEMO_OFFSET = (pidExpr) => `let demoOffsetMin = 0;
+try {
+  const r = $('Get demo_clock').all().map((i) => i.json).find((x) => x && String(x.patientId) === String(${pidExpr}));
+  demoOffsetMin = r && Number.isFinite(Number(r.offsetMin)) ? Number(r.offsetMin) : 0;
+} catch (e) { demoOffsetMin = 0; }
+const nowMs = Date.now() + demoOffsetMin * 60000;`;
 const uuid = (s) => { const h = require("crypto").createHash("md5").update(s).digest("hex");
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`; };
 const LOCAL_ISO = `const localIso = (d) => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Vancouver',
@@ -329,7 +345,8 @@ const finish = (prefix, nodes) => nodes.map((n, i) => ({ id: uuid(`${prefix}-${i
 // --- B4 code nodes ---
 const CHECK_REQUEST = `// Validate the app's request (docs/API.md). Bad requests get a 400 with a clear message.
 ${LOCAL_ISO}
-const body = $input.first().json.body || {};
+const body = $('Webhook').first().json.body || {};
+${DEMO_OFFSET("body.patientId || 'P001'")}
 const types = ['pain', 'dose', 'meal', 'walk', 'physio'];
 const isNum = (x) => x !== null && x !== undefined && x !== '' && Number.isFinite(Number(x));
 let error = null;
@@ -343,11 +360,12 @@ else if (body.type === 'walk' && body.km !== null && body.km !== undefined && !(
 else if (body.type === 'physio') {
   // R1: appointment start, from 2 h ago up to 7 days ahead
   const at = new Date(body.at);
-  const ahead = (at.getTime() - Date.now()) / 3600000;
+  const ahead = (at.getTime() - nowMs) / 3600000;
   if (!body.at || isNaN(at)) error = 'at must be a date and time (ISO 8601)';
   else if (ahead < -2 || ahead > 7 * 24) error = 'Physio time must be between 2 hours ago and 7 days ahead';
 }
-return [{ json: { valid: !error, error, type: body.type, patientId: String(body.patientId || 'P001'), time: localIso(new Date()), body } }];`;
+return [{ json: { valid: !error, error, type: body.type, patientId: String(body.patientId || 'P001'),
+  time: localIso(new Date(nowMs)), now: localIso(new Date(nowMs)), demoOffsetMin, body } }];`;
 
 const ROW = {
   pain: `// Pain log row + the weather right now (Open-Meteo). Weather may be missing; the log is still saved.
@@ -458,6 +476,7 @@ const switchRule = (type) => ({
   const X = (i) => i * 220;
   const b4 = [
     place(webhook("Webhook", "POST", "log"), [X(0), 300]),
+    place(getDemoClock(), [X(0) + 110, 520]),
     place(code("Check request", CHECK_REQUEST), [X(1), 300]),
     place(ifNode("Valid request?", "valid", null), [X(2), 300]),
     place(respond("Respond: bad request", {
@@ -506,7 +525,7 @@ const switchRule = (type) => ({
   const statusChain = [...TABLES.map(tableNode), "Get weather (Open-Meteo)", "Compute status", "Get predictions", "B5: learn from last dose", "Learned?"];
   const learnChain = ["Model row", "Update patient_model", "Prediction row", "Insert predictions", "Build reply", "Respond"];
   const b4Conn = wire([
-    ["Webhook", "Check request"], ["Check request", "Valid request?"],
+    ["Webhook", "Get demo_clock"], ["Get demo_clock", "Check request"], ["Check request", "Valid request?"],
     ["Valid request?", "Type?", 0], ["Valid request?", "Respond: bad request", 1],
     ["Type?", "Pain: weather now", 0], ["Type?", "Dose: get prescription", 1], ["Type?", "Meal row", 2], ["Type?", "Walk row", 3], ["Type?", "Physio row", 4],
     ["Pain: weather now", "Pain row"], ["Pain row", "Insert pain_log"],
@@ -523,18 +542,87 @@ const switchRule = (type) => ({
 
   let sx6 = 220;
   const b6 = [place(webhook("Webhook", "GET", "dashboard"), [0, 300])];
-  b6.push(...statusNodes("({ patientId: ($('Webhook').first().json.query || {}).patientId, now: ($('Webhook').first().json.query || {}).now })",
+  const DEMO_TIME = `// R3: "now" for the dashboard = real time + demo clock offset (?now=ISO still overrides, for testing)
+${LOCAL_ISO}
+const q = $('Webhook').first().json.query || {};
+${DEMO_OFFSET("q.patientId || 'P001'")}
+return [{ json: { patientId: q.patientId || 'P001', now: q.now || localIso(new Date(nowMs)), demoOffsetMin } }];`;
+  b6.push(place(getDemoClock(), [sx6, 300]), place(code("Demo time", DEMO_TIME), [sx6 + 220, 300]));
+  sx6 += 440;
+  b6.push(...statusNodes("$('Demo time').first().json",
     () => [(sx6 += 220) - 220, 300]));
   b6.push(place(respond("Respond"), [sx6, 300]));
   b6.push(sticky("## PainPal · B6 · GET /dashboard\nReads the tables, applies prescription rules, predicts when pain is likely back, " +
     "finds patterns and heads-ups. Replies with the dashboard JSON (docs/API.md).\n\n`?patientId=P001` (optional `&now=ISO` for demo mode)\n\n" +
     "**Owner:** Person B · built by n8n/build.js · **Activate** to use `/webhook/dashboard`.", [-40, -300], 520, 240));
-  const b6Chain = ["Webhook", ...TABLES.map(tableNode), "Get weather (Open-Meteo)", "Compute status", "Respond"];
+  const b6Chain = ["Webhook", "Get demo_clock", "Demo time", ...TABLES.map(tableNode), "Get weather (Open-Meteo)", "Compute status", "Respond"];
   fs.writeFileSync(path.join(__dirname, "PainPal-B6-dashboard.json"), JSON.stringify({
     name: "PainPal · B6 · GET /dashboard", nodes: finish("b6", b6),
     connections: wire(b6Chain.slice(0, -1).map((n, i) => [n, b6Chain[i + 1]])), settings: { executionOrder: "v1" },
   }, null, 2) + "\n");
   console.log(`B4/B6:    n8n/PainPal-B4-log.json (${b4.length} nodes), n8n/PainPal-B6-dashboard.json (${b6.length} nodes)`);
+}
+
+// ---------- R3: POST /demo-clock (demo only: moves "now" forward for /log and /dashboard) ----------
+{
+  const CLOCK_CHECK = `// Validate { advanceMinutes } or { reset: true } (docs/API.md, R3). Bad requests get a 400.
+const body = $input.first().json.body || {};
+const adv = Number(body.advanceMinutes);
+let error = null;
+if (body.reset !== true && !(Number.isInteger(adv) && adv >= 1 && adv <= 1440))
+  error = 'Send { advanceMinutes: 1 to 1440 } or { reset: true }';
+return [{ json: { valid: !error, error, patientId: String(body.patientId || 'P001'), reset: body.reset === true, advanceMinutes: adv || 0 } }];`;
+  const NEW_OFFSET = `// New offset = old + advance (max 7 days ahead), or 0 on reset
+const c = $('Check request').first().json;
+const row = $('Get demo_clock').all().map((i) => i.json).find((r) => r && String(r.patientId) === c.patientId);
+const old = row && Number.isFinite(Number(row.offsetMin)) ? Number(row.offsetMin) : 0;
+const offsetMin = c.reset ? 0 : Math.min(7 * 24 * 60, old + c.advanceMinutes);
+return [{ json: { patientId: c.patientId, offsetMin, exists: !!row } }];`;
+  const ROW_ONLY = "// only the table's columns\nconst n = $('New offset').first().json;\nreturn [{ json: { patientId: n.patientId, offsetMin: n.offsetMin } }];";
+  const CLOCK_REPLY = `// Reply: { ok, now, offsetMin }
+${LOCAL_ISO}
+const n = $('New offset').first().json;
+return [{ json: { ok: true, now: localIso(new Date(Date.now() + n.offsetMin * 60000)), offsetMin: n.offsetMin } }];`;
+  const X = (i) => i * 220;
+  const r3 = [
+    place(webhook("Webhook", "POST", "demo-clock"), [X(0), 300]),
+    place(code("Check request", CLOCK_CHECK), [X(1), 300]),
+    place(ifNode("Valid request?", "valid", null), [X(2), 300]),
+    place(respond("Respond: bad request", {
+      respondWith: "json", responseBody: "={{ JSON.stringify({ ok: false, message: $json.error }) }}", options: { responseCode: 400 },
+    }), [X(3), 520]),
+    place({ parameters: { resource: "table", operation: "create", tableName: "demo_clock",
+      columns: { column: Object.entries(SCHEMA.demo_clock).map(([name, type]) => ({ name, type })) }, options: { createIfNotExists: true } },
+      name: "Create demo_clock (if missing)", type: "n8n-nodes-base.dataTable", typeVersion: 1, executeOnce: true }, [X(3), 300]),
+    place({ ...getDemoClock(), onError: undefined }, [X(4), 300]),
+    place(code("New offset", NEW_OFFSET, "old + advance, or 0 on reset"), [X(5), 300]),
+    place(ifNode("Row exists?", "exists", null), [X(6), 300]),
+    place(code("Row to update", ROW_ONLY), [X(7), 180]),
+    place({ parameters: { resource: "row", operation: "update", dataTableId: { __rl: true, mode: "name", value: "demo_clock" },
+      filters: { conditions: [{ keyName: "patientId", condition: "eq", keyValue: "={{ $json.patientId }}" }] },
+      columns: { mappingMode: "autoMapInputData", value: {}, matchingColumns: [], schema: [] }, options: {} },
+      name: "Update demo_clock", type: "n8n-nodes-base.dataTable", typeVersion: 1, alwaysOutputData: true }, [X(8), 180]),
+    place(code("Row to insert", ROW_ONLY), [X(7), 420]),
+    place({ ...insert("demo_clock"), alwaysOutputData: true }, [X(8), 420]),
+    place(code("Build reply", CLOCK_REPLY), [X(9), 300]),
+    place(respond("Respond"), [X(10), 300]),
+    sticky("## PainPal · R3 · POST /demo-clock (DEMO ONLY)\nMoves \"now\" forward so the demo video can show learning without waiting hours. " +
+      "`{ advanceMinutes: 30 }` or `{ reset: true }`. B4 /log and B6 /dashboard add the offset from the `demo_clock` table; " +
+      "the app always labels it \"Demo time\".\n\n**Owner:** Person B · built by n8n/build.js · **Activate** to use `/webhook/demo-clock`.",
+      [-40, -300], 560, 240),
+  ];
+  const r3Conn = wire([
+    ["Webhook", "Check request"], ["Check request", "Valid request?"],
+    ["Valid request?", "Create demo_clock (if missing)", 0], ["Valid request?", "Respond: bad request", 1],
+    ["Create demo_clock (if missing)", "Get demo_clock"], ["Get demo_clock", "New offset"], ["New offset", "Row exists?"],
+    ["Row exists?", "Row to update", 0], ["Row exists?", "Row to insert", 1],
+    ["Row to update", "Update demo_clock"], ["Row to insert", "Insert demo_clock"],
+    ["Update demo_clock", "Build reply"], ["Insert demo_clock", "Build reply"], ["Build reply", "Respond"],
+  ]);
+  fs.writeFileSync(path.join(__dirname, "PainPal-R3-demo-clock.json"), JSON.stringify({
+    name: "PainPal · R3 · POST /demo-clock", nodes: finish("r3", r3), connections: r3Conn, settings: { executionOrder: "v1" },
+  }, null, 2) + "\n");
+  console.log(`R3:       n8n/PainPal-R3-demo-clock.json (${r3.length} nodes)`);
 }
 
 console.log(`Seed CSVs for ${PATIENT} in n8n/seed/:`, Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(", "));

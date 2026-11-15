@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { USING_FAKE_DATA, getDashboard, logEntry } from './api.js'
+import { USING_FAKE_DATA, getDashboard, logEntry, setDemoClock } from './api.js'
+import DemoClock from './components/DemoClock.jsx'
 import { formatTime } from './format.js'
 import MyStatus from './components/MyStatus.jsx'
 import PainForm from './components/PainForm.jsx'
@@ -46,17 +47,37 @@ export default function App() {
     try {
       setReply(await logEntry(entry))
       onDone?.()
-      const fresh = await loadDashboard()
-      if (fresh && before) {
-        setPrev(before)
-        clearTimeout(prevTimer.current)
-        prevTimer.current = setTimeout(() => setPrev(null), 20000)
-      }
+      await refreshAndHighlight(before)
     } catch (err) {
       setReply(null)
       setError(err.message)
     } finally {
       setBusy(false)
+    }
+  }
+
+  // R3: move the demo clock, then refresh so "now", the chart and the prediction follow.
+  async function handleDemoClock(change) {
+    const before = dash
+    setBusy(true)
+    setError(null)
+    try {
+      await setDemoClock(change)
+      await refreshAndHighlight(before)
+    } catch (err) {
+      setReply(null)
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function refreshAndHighlight(before) {
+    const fresh = await loadDashboard()
+    if (fresh && before) {
+      setPrev(before)
+      clearTimeout(prevTimer.current)
+      prevTimer.current = setTimeout(() => setPrev(null), 20000)
     }
   }
 
@@ -88,6 +109,8 @@ export default function App() {
             </span>
           )}
         </header>
+
+        <DemoClock dash={dash} busy={busy} onChange={handleDemoClock} />
 
         <main>
           {dashError && (

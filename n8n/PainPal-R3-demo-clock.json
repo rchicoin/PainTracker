@@ -1,0 +1,474 @@
+{
+  "name": "PainPal · R3 · POST /demo-clock",
+  "nodes": [
+    {
+      "id": "1a9ad3d8-27e8-ec6b-aa34-03d65e8ef26e",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "demo-clock",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://pain-tracker-rosy.vercel.app,http://localhost:5173"
+        }
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "webhookId": "ecddf0e2-671e-68cb-a4c5-447e3003a1f9",
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "id": "c562d6a3-c75e-00ad-fcac-870f9fa8c421",
+      "parameters": {
+        "jsCode": "// Validate { advanceMinutes } or { reset: true } (docs/API.md, R3). Bad requests get a 400.\nconst body = $input.first().json.body || {};\nconst adv = Number(body.advanceMinutes);\nlet error = null;\nif (body.reset !== true && !(Number.isInteger(adv) && adv >= 1 && adv <= 1440))\n  error = 'Send { advanceMinutes: 1 to 1440 } or { reset: true }';\nreturn [{ json: { valid: !error, error, patientId: String(body.patientId || 'P001'), reset: body.reset === true, advanceMinutes: adv || 0 } }];"
+      },
+      "name": "Check request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "id": "349af653-abaa-ca92-1173-c77980b7cd57",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "valid-request-",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Valid request?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "id": "53238085-59e2-74bd-dd81-8b67bd37a8ac",
+      "parameters": {
+        "respondWith": "json",
+        "options": {
+          "responseCode": 400
+        },
+        "responseBody": "={{ JSON.stringify({ ok: false, message: $json.error }) }}"
+      },
+      "name": "Respond: bad request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        520
+      ]
+    },
+    {
+      "id": "d375081c-b57e-5a76-6989-8f901111d838",
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "demo_clock",
+        "columns": {
+          "column": [
+            {
+              "name": "patientId",
+              "type": "string"
+            },
+            {
+              "name": "offsetMin",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "name": "Create demo_clock (if missing)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "executeOnce": true,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "id": "3c7b8913-1d7e-401f-5133-f40f6d90cd9b",
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "demo_clock"
+        },
+        "returnAll": true
+      },
+      "name": "Get demo_clock",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "notes": "R3 demo clock (empty = real time)",
+      "notesInFlow": true,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "id": "a24d1c12-7b9f-768b-faa0-cabdea1f89d8",
+      "parameters": {
+        "jsCode": "// New offset = old + advance (max 7 days ahead), or 0 on reset\nconst c = $('Check request').first().json;\nconst row = $('Get demo_clock').all().map((i) => i.json).find((r) => r && String(r.patientId) === c.patientId);\nconst old = row && Number.isFinite(Number(row.offsetMin)) ? Number(row.offsetMin) : 0;\nconst offsetMin = c.reset ? 0 : Math.min(7 * 24 * 60, old + c.advanceMinutes);\nreturn [{ json: { patientId: c.patientId, offsetMin, exists: !!row } }];"
+      },
+      "name": "New offset",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "notes": "old + advance, or 0 on reset",
+      "notesInFlow": true,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "id": "d2f09f25-542f-1b91-5000-ccafef236d34",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "row-exists-",
+              "leftValue": "={{ $json.exists }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Row exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "id": "448d2f5a-9f60-a76d-b802-d8087b80f26e",
+      "parameters": {
+        "jsCode": "// only the table's columns\nconst n = $('New offset').first().json;\nreturn [{ json: { patientId: n.patientId, offsetMin: n.offsetMin } }];"
+      },
+      "name": "Row to update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        180
+      ]
+    },
+    {
+      "id": "fe9ba0f7-9de7-2dfd-0e5d-71ebdfdb87af",
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "demo_clock"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "patientId",
+              "condition": "eq",
+              "keyValue": "={{ $json.patientId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Update demo_clock",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "alwaysOutputData": true,
+      "position": [
+        1760,
+        180
+      ]
+    },
+    {
+      "id": "da45751f-ee2f-754b-3100-c106091eb555",
+      "parameters": {
+        "jsCode": "// only the table's columns\nconst n = $('New offset').first().json;\nreturn [{ json: { patientId: n.patientId, offsetMin: n.offsetMin } }];"
+      },
+      "name": "Row to insert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        420
+      ]
+    },
+    {
+      "id": "7f88102d-b5ce-e0dc-8938-261a1a32f3c9",
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "demo_clock"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "name": "Insert demo_clock",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "alwaysOutputData": true,
+      "position": [
+        1760,
+        420
+      ]
+    },
+    {
+      "id": "b95b5975-8bda-c672-4724-b3f0d4c1b576",
+      "parameters": {
+        "jsCode": "// Reply: { ok, now, offsetMin }\nconst localIso = (d) => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Vancouver',\n  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',\n  timeZoneName: 'longOffset' }).formatToParts(d).map((x) => [x.type, x.value]));\n  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}${p.timeZoneName.replace('GMT', '') || '+00:00'}`; };\nconst n = $('New offset').first().json;\nreturn [{ json: { ok: true, now: localIso(new Date(Date.now() + n.offsetMin * 60000)), offsetMin: n.offsetMin } }];"
+      },
+      "name": "Build reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        300
+      ]
+    },
+    {
+      "id": "261c7beb-a0ee-fc49-c2c5-bbaa2cdab865",
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {}
+      },
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2200,
+        300
+      ]
+    },
+    {
+      "id": "3714df66-9f3d-b850-35b7-0f23bf9e3ae7",
+      "parameters": {
+        "content": "## PainPal · R3 · POST /demo-clock (DEMO ONLY)\nMoves \"now\" forward so the demo video can show learning without waiting hours. `{ advanceMinutes: 30 }` or `{ reset: true }`. B4 /log and B6 /dashboard add the offset from the `demo_clock` table; the app always labels it \"Demo time\".\n\n**Owner:** Person B · built by n8n/build.js · **Activate** to use `/webhook/demo-clock`.",
+        "width": 560,
+        "height": 240
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check request": {
+      "main": [
+        [
+          {
+            "node": "Valid request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid request?": {
+      "main": [
+        [
+          {
+            "node": "Create demo_clock (if missing)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: bad request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create demo_clock (if missing)": {
+      "main": [
+        [
+          {
+            "node": "Get demo_clock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get demo_clock": {
+      "main": [
+        [
+          {
+            "node": "New offset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New offset": {
+      "main": [
+        [
+          {
+            "node": "Row exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Row exists?": {
+      "main": [
+        [
+          {
+            "node": "Row to update",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Row to insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Row to update": {
+      "main": [
+        [
+          {
+            "node": "Update demo_clock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Row to insert": {
+      "main": [
+        [
+          {
+            "node": "Insert demo_clock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update demo_clock": {
+      "main": [
+        [
+          {
+            "node": "Build reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert demo_clock": {
+      "main": [
+        [
+          {
+            "node": "Build reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build reply": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

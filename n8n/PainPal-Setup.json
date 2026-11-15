@@ -538,6 +538,59 @@
     },
     {
       "parameters": {
+        "resource": "table",
+        "operation": "delete",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "demo_clock"
+        }
+      },
+      "name": "Delete old demo_clock",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        3740,
+        200
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "id": "setup-17-delete-old-demo-clock"
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "demo_clock",
+        "columns": {
+          "column": [
+            {
+              "name": "patientId",
+              "type": "string"
+            },
+            {
+              "name": "offsetMin",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "name": "Create demo_clock",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        3960,
+        400
+      ],
+      "executeOnce": true,
+      "id": "setup-18-create-demo-clock"
+    },
+    {
+      "parameters": {
         "url": "https://raw.githubusercontent.com/rchicoin/PainTracker/main/n8n/seed/prescription.csv",
         "options": {
           "response": {
@@ -552,11 +605,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3740,
+        4180,
         200
       ],
       "executeOnce": true,
-      "id": "setup-17-download-prescription-csv"
+      "id": "setup-19-download-prescription-csv"
     },
     {
       "parameters": {
@@ -566,10 +619,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3960,
+        4400,
         400
       ],
-      "id": "setup-18-parse-prescription"
+      "id": "setup-20-parse-prescription"
     },
     {
       "parameters": {
@@ -592,10 +645,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        4180,
+        4620,
         300
       ],
-      "id": "setup-19-insert-prescription"
+      "id": "setup-21-insert-prescription"
     },
     {
       "parameters": {
@@ -613,11 +666,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4400,
+        4840,
         200
       ],
       "executeOnce": true,
-      "id": "setup-20-download-pain-log-csv"
+      "id": "setup-22-download-pain-log-csv"
     },
     {
       "parameters": {
@@ -627,10 +680,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4620,
+        5060,
         400
       ],
-      "id": "setup-21-parse-pain-log"
+      "id": "setup-23-parse-pain-log"
     },
     {
       "parameters": {
@@ -653,10 +706,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        4840,
+        5280,
         300
       ],
-      "id": "setup-22-insert-pain-log"
+      "id": "setup-24-insert-pain-log"
     },
     {
       "parameters": {
@@ -674,11 +727,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5060,
+        5500,
         200
       ],
       "executeOnce": true,
-      "id": "setup-23-download-doses-csv"
+      "id": "setup-25-download-doses-csv"
     },
     {
       "parameters": {
@@ -688,10 +741,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5280,
+        5720,
         400
       ],
-      "id": "setup-24-parse-doses"
+      "id": "setup-26-parse-doses"
     },
     {
       "parameters": {
@@ -714,10 +767,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        5500,
+        5940,
         300
       ],
-      "id": "setup-25-insert-doses"
+      "id": "setup-27-insert-doses"
     },
     {
       "parameters": {
@@ -735,11 +788,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5720,
+        6160,
         200
       ],
       "executeOnce": true,
-      "id": "setup-26-download-meals-csv"
+      "id": "setup-28-download-meals-csv"
     },
     {
       "parameters": {
@@ -749,10 +802,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5940,
+        6380,
         400
       ],
-      "id": "setup-27-parse-meals"
+      "id": "setup-29-parse-meals"
     },
     {
       "parameters": {
@@ -775,10 +828,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        6160,
+        6600,
         300
       ],
-      "id": "setup-28-insert-meals"
+      "id": "setup-30-insert-meals"
     },
     {
       "parameters": {
@@ -796,11 +849,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        6380,
+        6820,
         200
       ],
       "executeOnce": true,
-      "id": "setup-29-download-walks-csv"
+      "id": "setup-31-download-walks-csv"
     },
     {
       "parameters": {
@@ -810,10 +863,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6600,
+        7040,
         400
       ],
-      "id": "setup-30-parse-walks"
+      "id": "setup-32-parse-walks"
     },
     {
       "parameters": {
@@ -836,10 +889,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        6820,
+        7260,
         300
       ],
-      "id": "setup-31-insert-walks"
+      "id": "setup-33-insert-walks"
     },
     {
       "parameters": {
@@ -857,11 +910,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        7040,
+        7480,
         200
       ],
       "executeOnce": true,
-      "id": "setup-32-download-schedule-csv"
+      "id": "setup-34-download-schedule-csv"
     },
     {
       "parameters": {
@@ -871,10 +924,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7260,
+        7700,
         400
       ],
-      "id": "setup-33-parse-schedule"
+      "id": "setup-35-parse-schedule"
     },
     {
       "parameters": {
@@ -897,10 +950,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        7480,
+        7920,
         300
       ],
-      "id": "setup-34-insert-schedule"
+      "id": "setup-36-insert-schedule"
     },
     {
       "parameters": {
@@ -918,11 +971,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        7700,
+        8140,
         200
       ],
       "executeOnce": true,
-      "id": "setup-35-download-patient-model-csv"
+      "id": "setup-37-download-patient-model-csv"
     },
     {
       "parameters": {
@@ -932,10 +985,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7920,
+        8360,
         400
       ],
-      "id": "setup-36-parse-patient-model"
+      "id": "setup-38-parse-patient-model"
     },
     {
       "parameters": {
@@ -958,10 +1011,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        8140,
+        8580,
         300
       ],
-      "id": "setup-37-insert-patient-model"
+      "id": "setup-39-insert-patient-model"
     },
     {
       "parameters": {
@@ -976,7 +1029,7 @@
         0,
         -40
       ],
-      "id": "setup-38-sticky-note"
+      "id": "setup-40-sticky-note"
     }
   ],
   "connections": {
@@ -1157,6 +1210,28 @@
       ]
     },
     "Create predictions": {
+      "main": [
+        [
+          {
+            "node": "Delete old demo_clock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete old demo_clock": {
+      "main": [
+        [
+          {
+            "node": "Create demo_clock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create demo_clock": {
       "main": [
         [
           {

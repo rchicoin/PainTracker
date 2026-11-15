@@ -52,6 +52,23 @@ button:disabled { opacity: 0.55; cursor: default; }
 }
 .header h1 { margin: 0; font-size: 1.25rem; }
 
+/* R3: demo clock bar (always labelled; amber while the clock is shifted) */
+.demo-clock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 0 0 14px;
+  font-size: 0.9rem;
+}
+.demo-clock.is-active { background: #fff3d6; border: 2px solid var(--warn); color: var(--warn); }
+.demo-clock-buttons { display: flex; gap: 6px; }
+.demo-clock-buttons .btn-small { margin-left: 0; }
+
 /* ---------- Cards ---------- */
 .card {
   background: var(--card);
