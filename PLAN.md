@@ -1,7 +1,7 @@
 # PainTracker: team plan
 
-**Deadline: Sun Nov 15, 3:00 PM PST. No edits to the repo or Devpost after that (disqualification).**
-Build freeze 11:00 AM Sunday. Video recorded by ~1 PM. Submit by 2:30 PM.
+**Deadline: Sun Nov 15, 2:00 PM. No edits to the repo or Devpost after that (disqualification).**
+Video edited by ~1:30 PM. Submit by 1:45 PM.
 
 Track: **n8n track** (+ overall). n8n must do the real work; the app only displays and collects input.
 
@@ -86,8 +86,10 @@ Ordered by demo value. **If time runs short, cut from the bottom.** Items 1 + 2 
 "PainPal learned from your last dose", and the "Your personal pattern" line in the "why" card changes.
 
 ### Both: Submission
-- [ ] Regenerate demo data so "last 24 h" looks live (Sunday morning)
-- [ ] Record demo video (≤ 3 min): see `docs/DEMO.md`
+- [x] Regenerate demo data so "last 24 h" looks live (Sunday morning)
+- [ ] Record demo video (≤ 3 min): **final script + n8n clip list + Clipchamp steps in `docs/DEMO.md`**
+  - [x] App recording done (live run ~11:56 AM, `painpal-demo-full.webm` on Reagan's laptop)
+  - [ ] n8n clips (4) · [ ] voiceover · [ ] edit + export + upload
 - [ ] README: screenshots, setup, disclosures, team
 - [ ] Devpost page + disclosure list
 - [ ] Final push before 2:30 PM
