@@ -1,0 +1,67 @@
+{
+  "model": "ridge",
+  "target": "hours until pain rises above goal after an as-needed dose",
+  "trainedOn": "synthetic, 30 fictional patients, 1983 doses",
+  "features": [
+    "hour_sin",
+    "hour_cos",
+    "evening",
+    "pain_at_dose",
+    "walk_km_prev_3h",
+    "walk_min_prev_3h",
+    "hours_since_scheduled_med",
+    "hours_since_meal",
+    "pressure_change_6h",
+    "temp_c",
+    "precip_mm"
+  ],
+  "mean": [
+    -0.031816,
+    -0.538723,
+    0.090267,
+    5.524962,
+    0.203636,
+    3.24004,
+    5.494367,
+    6.160434,
+    -0.049939,
+    8.000454,
+    0.289864
+  ],
+  "scale": [
+    0.745548,
+    0.391042,
+    0.286564,
+    1.319491,
+    0.593357,
+    9.545806,
+    4.112043,
+    4.393426,
+    3.735198,
+    1.79717,
+    0.768126
+  ],
+  "coef": [
+    -0.08116,
+    -0.056759,
+    -0.293785,
+    -0.129064,
+    -0.437455,
+    0.151244,
+    -0.163192,
+    -0.078352,
+    0.285734,
+    0.07905,
+    -0.118246
+  ],
+  "intercept": 3.118079,
+  "offsetUpdate": {
+    "keep": 0.7,
+    "learn": 0.3
+  },
+  "testErrorMin": {
+    "patientMedian": 44,
+    "linear": 40,
+    "linearPlusOffset": 34
+  }
+}

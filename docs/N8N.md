@@ -16,7 +16,7 @@ Naming: `PainPal · B4 · /log`. Add a sticky note on each canvas: purpose · ow
 | `patient_model` | patientId, offsetHours, dosesLearned, lastUpdated |
 | `predictions` | patientId, doseTime, predictedHours, actualHours (filled later), error |
 
-Load demo history for one patient from `data/` (pain_log.csv, medications.csv, meals.csv, schedule.csv).
+Load demo history for one patient from `data/` (prescription.csv, pain_log.csv, medications.csv, meals.csv, walks.csv). See `data/README.md`.
 
 ---
 

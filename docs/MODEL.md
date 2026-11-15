@@ -16,28 +16,33 @@ It never changes prescription limits. Those are fixed rules in n8n.
 Not deep learning. The language model (Claude) is only used for understanding text and writing summaries, **not** for predictions.
 
 ## Features (known at the time of the dose)
-| Feature | Meaning |
-|---|---|
-| hour_sin, hour_cos | time of day as a circle |
-| evening | 1 if 6–10 PM |
-| days_post_op | healing over time |
-| pain_at_dose | pain score when the dose was taken |
-| steps_prev_3h | movement before the dose |
-| physio_next_2h | physio planned within 2 h (0/1) |
-| walk_km_next_2h | walking planned/done within 2 h |
-| hours_since_scheduled_med | late/missed scheduled medication |
-| hours_since_meal | skipped meals |
-| pressure_change_6h | falling barometric pressure |
+Only what the app collects: GPS walks, pain logs, medication times, meal times, weather. Not specific to surgery patients.
+
+| Feature | Source | Meaning |
+|---|---|---|
+| hour_sin, hour_cos | dose time | time of day as a circle |
+| evening | dose time | 1 if 6–10 PM |
+| pain_at_dose | pain log | pain score when the dose was taken |
+| walk_km_prev_3h | GPS walks | km walked in the 3 h before the dose |
+| walk_min_prev_3h | GPS walks | minutes walked in the 3 h before the dose |
+| hours_since_scheduled_med | medications | late/missed scheduled medication (capped at 12) |
+| hours_since_meal | meals | skipped meals (capped at 12) |
+| pressure_change_6h | weather | change in air pressure over 6 h (falling = negative) |
+| temp_c | weather | temperature at the dose |
+| precip_mm | weather | rain in that hour |
 
 Training rules: drop `censored` rows (pain return not observed, e.g. overnight); **time-based split** (train on days 1–16, test on days 17–21).
 
-## Results so far (synthetic data)
+## Results so far (synthetic data, seed 17)
+Filled in by `ml/train.py` (it prints this table).
+
 | Model | Average error |
 |---|---|
-| Patient's own median (simple baseline) | ~98 min |
-| Linear, same for everyone | 63 min |
-| Gradient boosting, same for everyone | 60 min |
-| **Linear + personal offset (our model)** | **53 min** |
+| Patient's own median (simple baseline) | 44 min |
+| Linear, same for everyone | 40 min |
+| **Linear + personal offset (our model)** | **34 min** |
+
+Biggest effects found: evenings (about −60 min of relief), each km walked in the previous 3 h (about −45 min), rain (about −9 min per mm).
 
 ## weights.json format
 ```json
