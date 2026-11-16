@@ -1,15 +1,11 @@
 # PainTracker
-PainTracker: a patient web app that learns your personal pain pattern and warns you before pain returns, always within your prescription limits. Built with React + Vite and powered by n8n workflows and a personalized ML model. Synthetic data only, not medical advice. UBC LOOP x n8n Buildathon 2026.
-
 **Pain is personal, so your pain plan should be too.**
 
-PainTracker is a patient web app that learns your personal pain pattern. It shows you when your pain relief is likely to wear off and why, so your pain care can be more precise and personal, always within your prescribed dosing.
+PainTracker is a patient web app that learns your personal pain pattern. It shows you when your pain relief is likely to wear off and why, so your pain care can be more precise and personal, always within your prescribed dosing limits. Built with React + Vite and powered by n8n workflows and a personalized ML model.
+
+> ⚠️ **Hackathon demo. Synthetic data only. Not medical advice.** All patients and medications in this project ("Baselinol", "DemoRelief") are fictional. Built for the **UBC LOOP × n8n Buildathon** (Nov 14–15, 2026), n8n track.
 
 **Live app:** https://pain-tracker-rosy.vercel.app (installable on your phone: *Add to Home Screen*)
-
-> ⚠️ **Hackathon demo. Synthetic data only. Not medical advice.** All patients and medications in this project ("Baselinol", "DemoRelief") are fictional.
-
-Built for the **UBC LOOP × n8n Buildathon** (Nov 14–15, 2026), n8n track.
 
 | Your dashboard | Why this prediction | Log in a tap | Live updates |
 |---|---|---|---|
@@ -19,7 +15,7 @@ Built for the **UBC LOOP × n8n Buildathon** (Nov 14–15, 2026), n8n track.
 
 ## The problem
 
-Pain is individual and changes hour to hour. Prescriptions for “as needed” pain medication follow fixed rules (e.g. “every 4 hours”), but those rules can’t account for when your pain tends to return, what makes it worse (activity, weather, missed meals, time of day), or how this changes over time. Prescribers see the big picture, but many factors can affect pain control at the same time, and some of their combined effects are hard for anyone to spot from a short appointment. PainTracker’s logging brings those hidden patterns to light, so patients and prescribers can see what is actually driving pain.
+Pain is individual and changes hour to hour. Prescriptions for “as needed” (PRN) pain medication follow fixed rules, like “every 4 hours, up to X mg a day.” Those rules are essential for preventing overdose, but they only set the minimum time between doses. If a dose’s relief lasts longer than that interval, patients are left guessing when to take the next one. Sometimes they take it too soon, while the last dose is still working, which means more medication than they need. Other times they wait too long and the pain becomes significant which impacts their daily functioning. Pain control is subjective and hard to judge in the moment, and it changes with activity, weather, missed meals and time of day. Prescribers see the big picture, but with so many factors acting at once, some of their combined effects are hard for anyone to spot in a short appointment. PainTracker’s logging brings those hidden patterns to light, so patients and prescribers can see what is actually driving pain.
 
 ## What PainTracker does
 
