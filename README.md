@@ -3,7 +3,7 @@ PainTracker: a patient web app that learns your personal pain pattern and warns 
 
 **Pain is personal, so your pain plan should be too.**
 
-PainTracker is a patient web app that learns your personal pain pattern and gives you a heads-up *before* your pain comes back, always within your prescription limits.
+PainTracker is a patient web app that learns your personal pain pattern. It shows you when your pain relief is likely to wear off and why, so your pain care can be more precise and personal, always within your prescribed dosing.
 
 **Live app:** https://pain-tracker-rosy.vercel.app (installable on your phone: *Add to Home Screen*)
 
@@ -19,16 +19,16 @@ Built for the **UBC LOOP × n8n Buildathon** (Nov 14–15, 2026), n8n track.
 
 ## The problem
 
-Pain is individual and changes hour to hour. Prescriptions for "as needed" pain medication are written with fixed rules (e.g. "every 4 hours"), but they can't account for when *your* pain tends to return, what makes it worse (activity, weather, missed meals, time of day), or how this changes over time. Patients often wait in pain, and prescribers rarely see these patterns.
+Pain is individual and changes hour to hour. Prescriptions for “as needed” pain medication follow fixed rules (e.g. “every 4 hours”), but those rules can’t account for when your pain tends to return, what makes it worse (activity, weather, missed meals, time of day), or how this changes over time. Prescribers see the big picture, but many factors can affect pain control at the same time, and some of their combined effects are hard for anyone to spot from a short appointment. PainTracker’s logging brings those hidden patterns to light, so patients and prescribers can see what is actually driving pain.
 
 ## What PainTracker does
 
 - 📝 **Quick logging:** pain score (0–10), "Took my dose" (with a confirm step), meals, walks, and physio appointments
-- 🚶 **Automatic walk tracking:** while the app is open, walks are detected on the phone and logged as distance + minutes
+- 🚶 **Automatic walk tracking:** while the app and if the patient provides permission, walks are detected on the phone and logged as distance + minutes
 - ⏱ **Prescription-aware status:** when your next dose is allowed, mg used of your 24 h maximum, and a clear "Daily max reached" state
 - 💊 **My medication:** enter your prescription from the label (dose, hours between doses, daily max, pain goal); n8n validates it and applies the new limits right away
 - 🔮 **Personal prediction:** "Your pain is likely back around 3:00 PM", with a dashed **forecast line** on the chart showing expected pain after your last dose
-- 🩺 **Plan around physio:** add an appointment and the prediction updates right away (physio soon after a dose shortens relief)
+- 🩺 **Plan around physio:** add an appointment and the prediction updates right away
 - ❓ **Why this prediction:** shows what moved it, e.g. *Evening: 48 min sooner · Your personal pattern: 14 min later*
 - 💡 **Your patterns:** e.g. "Walks over 1 km raise your pain about 2 points within 2 hours"
 - 🔔 **Heads-ups in the app:** pain likely back soon, daily max reached, physio coming up
@@ -59,16 +59,6 @@ React web app (PWA) ──► n8n webhooks ──► rules · patterns · predic
 - **Model (`ml/`):** a personalized linear regression (Ridge, scikit-learn) that predicts *hours until pain rises above your goal after a dose*. A per-patient offset is updated in n8n after every dose (`offset = 0.7 × offset + 0.3 × error`), so predictions adapt to each patient. Details: [`docs/MODEL.md`](docs/MODEL.md).
 - **Data (`data/`):** synthetic dataset generator (30 fictional patients × 21 days).
 
-### Model results (synthetic data; trained on days 1–16, tested on days 17–21)
-
-| Model | Average error |
-|---|---|
-| Patient's own median (simple baseline) | 45 min |
-| Linear, same for everyone | 38 min |
-| **Linear + personal offset (PainTracker)** | **36 min** |
-
-Biggest effects it found: evenings, physio soon after a dose, walking in the previous 3 h, pain level at the dose, and rain.
-
 ## Privacy & safety by design
 
 - Location is used **only while the app is open**, with permission.
@@ -80,28 +70,6 @@ Biggest effects it found: evenings, physio soon after a dose, walking in the pre
 
 ### Use it
 Open https://pain-tracker-rosy.vercel.app on your phone and add it to your home screen. Turn on **Auto walk tracking** to try GPS walks.
-
-### Run the app locally
-Requires Node.js 20.19+ or 22.12+.
-
-```bash
-cd app
-npm install
-cp .env.example .env      # set VITE_N8N_URL (leave it unset to use built-in sample data)
-npm run dev               # http://localhost:5173
-```
-
-Without `VITE_N8N_URL`, the app runs on sample data from [`docs/API.md`](docs/API.md) and says so in the header.
-
-### Set up the n8n side
-All workflows are exported in [`n8n/`](n8n/). Import them into n8n Cloud (**⋯ → Import from URL**), run **Setup** once, and activate the webhook workflows. Full steps in [`docs/N8N.md`](docs/N8N.md).
-
-### Regenerate data and retrain
-```bash
-node data/generate.js     # synthetic history ending now
-python ml/train.py        # → ml/weights.json + accuracy table
-node n8n/build.js         # rebuild the n8n workflow files
-```
 
 ## Project structure
 
